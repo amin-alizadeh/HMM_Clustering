@@ -7,6 +7,7 @@ Created on Jun 6, 2013
 import csv
 import os
 import numpy
+import math
 
 D = 3 # the number of dimensions to use: X, Y, Z
 M = 12 # output symbols
@@ -49,13 +50,28 @@ def main ():
     
 #     print(len(training[0][0][:]))
     ATrainBinned = get_point_clusters(training,centroids,D)
+    print(ATrainBinned)
     
     #ATestBinned = get_point_clusters(testing,centroids,D)
     
 
 def get_point_clusters(data,centroids,D):
-    pass
+    print(len(data[0][0][:]))
+    XClustered = numpy.zeros(shape = (len(data[0][0][:]),1))
+    K = len(centroids[:,0])
+    
 
+    for n in range(len(data[0][:][:])):
+        for i in range(len(data[0][0][:])):
+            temp = numpy.zeros(shape = (K, 1))
+            for j in range(K):
+                if D == 3:
+                    temp[j] = math.sqrt((centroids[j,0] - data[0][n][i])**2+(centroids[j,1] - data[1][n][i])**2+(centroids[j,2] - data[2][n][i])**2)
+            
+            idx, I = min((val, idx) for (idx, val) in enumerate(temp))
+            XClustered[n,1] = I # TO FINISH AND RETURN CORRECTLY
+    print(temp, idx, I)
+    return XClustered
     
 def get_point_centroids(data,K,D):
     
@@ -101,6 +117,7 @@ def kmeans(data, nbCluster):
     data_max = [max(data[:,0]), max(data[:,1]), max(data[:,2])]
     
     data_diff = numpy.subtract(data_max, data_min)
+
     # every row is a centroid
     centroid = numpy.random.rand(nbCluster, data_dim)
     
@@ -108,30 +125,24 @@ def kmeans(data, nbCluster):
     for i in range(len(centroid[:,1])):
         centroid [i,:] = centroid[i,:] * data_diff
         centroid [i,:] = centroid[i,:] + data_min
-    
+
     # end init centroids
     
     # no stopping at start
     pos_diff = 1.0
     # main loop
-    
-    tresh = 0
-    
-    while pos_diff > 0.0:
-        tresh = tresh + 1
-        if tresh > 8:
-            break
+
+    while pos_diff > 0.1:
         
         # E-step
         assignment = []
         
         # assign each datapoint to the closest centroid
-        for d in range(len(data[:,1])):
-            min_diff = numpy.subtract(data[d,:],centroid[1,:])
+        for d in range(len(data[:,0])):
+            min_diff = numpy.subtract(data[d,:], centroid[0,:])
             min_diff = numpy.dot(min_diff, min_diff.transpose())
-            curAssignment = 1
-            
-            for c in range(1,nbCluster):
+            curAssignment = 0
+            for c in range(1, nbCluster):
                 diff2c = numpy.subtract(data[d,:], centroid[c,:])
                 diff2c = numpy.dot(diff2c, diff2c.transpose())
                 if min_diff >= diff2c:
@@ -141,33 +152,29 @@ def kmeans(data, nbCluster):
             # assign the d-th dataPoint
             assignment.append(curAssignment)
             # for the stoppingCriterion
-            oldPositions = centroid
+        oldPositions = centroid
             
-            # M-Step
-            # recalculate the positions of the centroids
+        # M-Step
+        # recalculate the positions of the centroids
+        
+        centroid = numpy.zeros(shape = (nbCluster, data_dim))
+        pointsInCluster = numpy.zeros(shape = (nbCluster, 1))
+        for d in range(len(assignment)):
+            centroid[assignment[d],:] = centroid[assignment[d],:] + data[d,:]
+            pointsInCluster[assignment[d], 0] = pointsInCluster[assignment[d], 0] + 1
+        
+        for c in range(nbCluster):
             
-            centroid = numpy.zeros(shape = (nbCluster, data_dim))
-            pointsInCluster = numpy.zeros(shape = (nbCluster, 1))
+            if pointsInCluster[c, 0] != 0:
+                centroid[c, :] = centroid[c, :] / pointsInCluster[c, 0]
+            else:
+                # set cluster randomly to new position
+                centroid[c, :] = (numpy.random.rand(1, data_dim) * data_diff) + data_min
             
-            for d in range(len(assignment)):
-                centroid[assignment[d],:] = centroid[assignment[d],:] + data[d,:]
-                pointsInCluster[assignment[d], 0] = pointsInCluster[assignment[d], 0] + 1
-            
-            print(pointsInCluster)
-            for c in range(nbCluster):
-                
-                if pointsInCluster[c, 0] != 0:
-                    centroid[c, :] = centroid[c, :] / pointsInCluster[c, 0]
-                else:
-                    # set cluster randomly to new position
-                    centroid[c , :] = (numpy.random.rand(1, data_dim) * data_diff) + data_min
-                
-                # stoppingCriterion
-                pos_diff = sum(sum((centroid - oldPositions) **2))
-#                 print(pos_diff)
-                
-    pointsInCluster = 1
-    assignment = 1
+            # stoppingCriterion
+#             print("Centroids: ", centroid, "\nOld:", oldPositions)
+        pos_diff = sum(sum((centroid - oldPositions) **2))
+#         print(pos_diff)
     return (centroid, pointsInCluster, assignment)
     
 def mat_div(m, x):

@@ -24,16 +24,20 @@ def main ():
     f.close
     print(lines)
     '''
-    path = 'practice' + os.sep 
+    path = 'data' + os.sep 
     training = get_xyz_data(path + 'train', train_gesture);
-    testing = get_xyz_data(path + 'test',test_gesture);
+    #testing = get_xyz_data(path + 'test',test_gesture);
     
+    #print(len(training[0][:][:]))
     #print(training)
     #print(len(training))
-    print(training[0][0][0])
-    print(testing[0][0][0])
-    numpy.zeros (shape = (2,3))
-    
+    #print(training[2][59][9])
+    for n in range(len(training[0][:][:])):
+        for i in range(len(training[0][0][:])):
+            for j in range(D):
+                #print(n,i,j, training[j][n][i])
+                pass
+            
     '''
     ****************************************************
     Initializing
@@ -41,17 +45,137 @@ def main ():
     '''
     gestureRecThreshold = 0 # set below
     
-    centroids, N = get_point_centroids(training,N,D)
+    centroids, NX = get_point_centroids(training,N,D)
     
-     
-def get_point_centroids(data,K,D):
+#     print(len(training[0][0][:]))
+    ATrainBinned = get_point_clusters(training,centroids,D)
     
-    mean = numpy.zeros(shape = (len(data[0]),D))
+    #ATestBinned = get_point_clusters(testing,centroids,D)
     
-    
+
+def get_point_clusters(data,centroids,D):
     pass
 
     
+def get_point_centroids(data,K,D):
+    
+    mean = numpy.zeros(shape = (len(data[0][:][:]),D)) # 60 x 3
+    
+    for n in range(len(data[0][:][:])): #60 number of rows
+        for i in range(len(data[0][0][:])): #10 number of columns
+            for j in range(D): #3
+                mean[n][j] = mean[n][j] + data[j][n][i]
+                #print(n,i,j)
+                
+    Nmeans = mat_div (mean, len(data[0][0][:]))
+    centroids, points, idx = kmeans(Nmeans, K)
+    
+    K = len(centroids[0])
+    #print(len(Nmeans[0]))
+    return (centroids,K)
+
+'''
+usage
+function[centroid, pointsInCluster, assignment]=
+kmeans(data, nbCluster)
+
+Output:
+centroid: matrix in each row are the Coordinates of a centroid
+pointsInCluster: row vector with the nbDatapoints belonging to
+the centroid
+assignment: row Vector with clusterAssignment of the dataRows
+
+Input:
+data in rows
+nbCluster : nb of centroids to determine
+
+(c) by Christian Herta ( www.christianherta.de )
+
+'''
+def kmeans(data, nbCluster):
+    data_dim = len(data[0])
+    nbData = len(data)
+    
+    # init the centroids randomly
+    data_min = [min(data[:,0]), min(data[:,1]), min(data[:,2])]
+    data_max = [max(data[:,0]), max(data[:,1]), max(data[:,2])]
+    
+    data_diff = numpy.subtract(data_max, data_min)
+    # every row is a centroid
+    centroid = numpy.random.rand(nbCluster, data_dim)
+    
+    x = centroid[0,:] * data_diff
+    for i in range(len(centroid[:,1])):
+        centroid [i,:] = centroid[i,:] * data_diff
+        centroid [i,:] = centroid[i,:] + data_min
+    
+    # end init centroids
+    
+    # no stopping at start
+    pos_diff = 1.0
+    # main loop
+    
+    tresh = 0
+    
+    while pos_diff > 0.0:
+        tresh = tresh + 1
+        if tresh > 8:
+            break
+        
+        # E-step
+        assignment = []
+        
+        # assign each datapoint to the closest centroid
+        for d in range(len(data[:,1])):
+            min_diff = numpy.subtract(data[d,:],centroid[1,:])
+            min_diff = numpy.dot(min_diff, min_diff.transpose())
+            curAssignment = 1
+            
+            for c in range(1,nbCluster):
+                diff2c = numpy.subtract(data[d,:], centroid[c,:])
+                diff2c = numpy.dot(diff2c, diff2c.transpose())
+                if min_diff >= diff2c:
+                    curAssignment = c
+                    min_diff = diff2c
+            
+            # assign the d-th dataPoint
+            assignment.append(curAssignment)
+            # for the stoppingCriterion
+            oldPositions = centroid
+            
+            # M-Step
+            # recalculate the positions of the centroids
+            
+            centroid = numpy.zeros(shape = (nbCluster, data_dim))
+            pointsInCluster = numpy.zeros(shape = (nbCluster, 1))
+            
+            for d in range(len(assignment)):
+                centroid[assignment[d],:] = centroid[assignment[d],:] + data[d,:]
+                pointsInCluster[assignment[d], 0] = pointsInCluster[assignment[d], 0] + 1
+            
+            print(pointsInCluster)
+            for c in range(nbCluster):
+                
+                if pointsInCluster[c, 0] != 0:
+                    centroid[c, :] = centroid[c, :] / pointsInCluster[c, 0]
+                else:
+                    # set cluster randomly to new position
+                    centroid[c , :] = (numpy.random.rand(1, data_dim) * data_diff) + data_min
+                
+                # stoppingCriterion
+                pos_diff = sum(sum((centroid - oldPositions) **2))
+#                 print(pos_diff)
+                
+    pointsInCluster = 1
+    assignment = 1
+    return (centroid, pointsInCluster, assignment)
+    
+def mat_div(m, x):
+    z = numpy.zeros((len(m),len(m[0])))
+    for i in range(len(m)):
+        for j in range(len(m[0])):
+            z[i][j] = m[i][j] / x
+    return z 
     
 def get_xyz_data (path, name):
     fx = open(path + os.sep + name + '_x.csv', 'r')
@@ -65,7 +189,7 @@ def get_xyz_data (path, name):
     x = get_float_matrix(cx)
     y = get_float_matrix(cy)
     z = get_float_matrix(cz)
-
+    
     fx.close()
     fy.close()
     fz.close()

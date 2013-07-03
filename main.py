@@ -8,6 +8,7 @@ import csv
 import os
 import numpy
 import math
+import sys
 
 D = 3 # the number of dimensions to use: X, Y, Z
 M = 12 # output symbols
@@ -27,21 +28,12 @@ def main ():
     '''
     path = 'data' + os.sep 
     training = get_xyz_data(path + 'train', train_gesture);
-    #testing = get_xyz_data(path + 'test',test_gesture);
+    testing = get_xyz_data(path + 'test',test_gesture);
     
-    #print(len(training[0][:][:]))
-    #print(training)
-    #print(len(training))
-    #print(training[2][59][9])
-    for n in range(len(training[0][:][:])):
-        for i in range(len(training[0][0][:])):
-            for j in range(D):
-                #print(n,i,j, training[j][n][i])
-                pass
             
     '''
     ****************************************************
-    Initializing
+    *  Initializing
     ****************************************************
     '''
     gestureRecThreshold = 0 # set below
@@ -50,14 +42,94 @@ def main ():
     
 #     print(len(training[0][0][:]))
     ATrainBinned = get_point_clusters(training,centroids,D)
-    print(ATrainBinned)
+    ATestBinned = get_point_clusters(testing,centroids,D)
     
-    #ATestBinned = get_point_clusters(testing,centroids,D)
+    '''
+    ****************************************************
+    *  Training
+    ****************************************************
+    '''
     
+    # Set priors
+    pP = prior_transition_matrix(M,LR)
+    
+    # Train the model:
+    cyc = 50
+    dhmm_numeric(ATrainBinned,pP,range(N),M,cyc,.00001)
+    
+def dhmm_numeric(X, pP, bins, K = 2, cyc = 100, tol = 0.0001):
+    D = len(X[0,0,:])
+    
+    num_bins = len(bins)
+    epsilon = sys.float_info.epsilon
+    
+    # number of sequences
+    N = len(X[:,0,0])
+    
+    # calculating the length of each sequence
+    T = numpy.ones(shape = (1, N))
+    
+    for n in range(N):
+        T[0, n] = len(X[0, :, 0])
+    
+    TMAX = T.max()
+    
+    print('\n********************************************************************\n');
+    print('Training %d sequences of maximum length %d from an alphabet of size %d\n', N, TMAX, num_bins);
+    print('HMM with %d hidden states\n',K);
+    print('********************************************************************\n');
+
+    E = 0.1 * numpy.random.rand(num_bins, K)
+    E = E + numpy.ones(shape = (num_bins, K))
+    E = E / num_bins
+    E = cDiv(E, cSum(E))
+    print(E)
+    pass
+
+def cSum (X):
+    '''
+    Column sum
+    '''
+    if len(X[:, 0]) > 1:
+        Z = numpy.sum(X, axis = 0)
+    else:
+        Z = X
+        
+    return (Z)
+
+def cDiv(X, Y):
+    #Solve the problem with cDiv
+    if (len(X[0, :]) != len(Y[0, :])) or (len(Y[:, 0] != 1)):
+        print('Error in C Division')
+        return (None)
+    
+    Z = numpy.zeros_like(X)
+    
+    for i in range(len(X[:,0])):
+        Z[i, :] = X[i, :] / Y
+    
+    return (Z)
+def prior_transition_matrix(K, LR):
+    '''
+    ****************************************************
+    *  Create a prior for the transition matrix
+    ****************************************************
+    '''
+    
+    #LR is the allowable number of left-to-right transitions
+    P = (1 / LR) * numpy.identity(K)
+    
+    for i in range(K - (LR - 1)):
+        for j in range((LR - 1)):
+            P[i, i + (j + 1)] = 1 / LR
+
+    for i in range(K - (LR - 1), K):
+        for j in range(K - i):
+            P[i, i + j] = 1 / ((K - 1) - i + 1)
+    return (P)
 
 def get_point_clusters(data,centroids,D):
-    print(len(data[0][0][:]))
-    XClustered = numpy.zeros(shape = (len(data[0][0][:]),1))
+    XClustered = numpy.zeros(shape = (len(data[0][0][:]), len(data[0][:][:]), 1))
     K = len(centroids[:,0])
     
 
@@ -69,8 +141,7 @@ def get_point_clusters(data,centroids,D):
                     temp[j] = math.sqrt((centroids[j,0] - data[0][n][i])**2+(centroids[j,1] - data[1][n][i])**2+(centroids[j,2] - data[2][n][i])**2)
             
             idx, I = min((val, idx) for (idx, val) in enumerate(temp))
-            XClustered[n,1] = I # TO FINISH AND RETURN CORRECTLY
-    print(temp, idx, I)
+            XClustered[i,n,0] = I # TO FINISH AND RETURN CORRECTLY
     return XClustered
     
 def get_point_centroids(data,K,D):
@@ -88,27 +159,28 @@ def get_point_centroids(data,K,D):
     
     K = len(centroids[0])
     #print(len(Nmeans[0]))
-    return (centroids,K)
+    return (centroids, K)
 
-'''
-usage
-function[centroid, pointsInCluster, assignment]=
-kmeans(data, nbCluster)
 
-Output:
-centroid: matrix in each row are the Coordinates of a centroid
-pointsInCluster: row vector with the nbDatapoints belonging to
-the centroid
-assignment: row Vector with clusterAssignment of the dataRows
-
-Input:
-data in rows
-nbCluster : nb of centroids to determine
-
-(c) by Christian Herta ( www.christianherta.de )
-
-'''
 def kmeans(data, nbCluster):
+    '''
+    usage
+    function[centroid, pointsInCluster, assignment]=
+    kmeans(data, nbCluster)
+    
+    Output:
+    centroid: matrix in each row are the Coordinates of a centroid
+    pointsInCluster: row vector with the nbDatapoints belonging to
+    the centroid
+    assignment: row Vector with clusterAssignment of the dataRows
+    
+    Input:
+    data in rows
+    nbCluster : nb of centroids to determine
+    
+    (c) by Christian Herta ( www.christianherta.de )
+    
+    '''
     data_dim = len(data[0])
     nbData = len(data)
     

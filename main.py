@@ -9,6 +9,7 @@ import os
 import numpy
 import math
 import sys
+from scipy import sparse
 
 D = 3 # the number of dimensions to use: X, Y, Z
 M = 12 # output symbols
@@ -58,6 +59,7 @@ def main ():
     dhmm_numeric(ATrainBinned,pP,range(N),M,cyc,.00001)
     
 def dhmm_numeric(X, pP, bins, K = 2, cyc = 100, tol = 0.0001):
+    
     D = len(X[0,0,:])
     
     num_bins = len(bins)
@@ -74,17 +76,149 @@ def dhmm_numeric(X, pP, bins, K = 2, cyc = 100, tol = 0.0001):
     
     TMAX = T.max()
     
-    print('\n********************************************************************\n');
-    print('Training %d sequences of maximum length %d from an alphabet of size %d\n', N, TMAX, num_bins);
-    print('HMM with %d hidden states\n',K);
-    print('********************************************************************\n');
+#     print('\n********************************************************************\n');
+#     print('Training %d sequences of maximum length %d from an alphabet of size %d\n', N, TMAX, num_bins);
+#     print('HMM with %d hidden states\n',K);
+#     print('********************************************************************\n');
 
     E = 0.1 * numpy.random.rand(num_bins, K)
     E = E + numpy.ones(shape = (num_bins, K))
     E = E / num_bins
     E = cDiv(E, cSum(E))
-    print(E)
+    
+    B = numpy.zeros(shape = (TMAX, K))
+    
+    Pi = numpy.random.rand(K)
+    Pi = Pi / sum(Pi)
+    
+    # transition matrix
+    P = pP
+    P = rDiv(P, rSum(P))
+    
+    P = sparse.lil_matrix(P)
+    Xcurrent = X[1, :, :]
+
+    
+    LL = []
+    lik = 0
+#     for cycle in range(cyc):
+    GammaInit = numpy.zeros(shape = (1, K))
+    GammaSum = numpy.zeros(shape = (1, K))
+    GammaKSum = numpy.zeros(shape = (num_bins, K))
+    Scale = numpy.zeros(shape = (TMAX, 1))
+    sxi = sparse.lil_matrix((K, K))
+        
+    for n in range(N):
+        alpha = numpy.zeros(shape = (int(T[0,n]), K))
+        beta = numpy.zeros(shape = (int(T[0,n]), K))
+        gamma = numpy.zeros(shape = (int(T[0,n]), K))
+        gammaKsum = numpy.zeros(shape = (num_bins, K)) # not GammaKSum!
+        
+        #Inital values of B = Prob(output|s_i), given data X
+        n = 0
+        Xcurrent = X[n, :, :]
+        #print(Xcurrent[1] == bins)
+        for i in range(int(T[0,n])):
+            crit = (Xcurrent[i] == bins)
+            m = numpy.where(crit)[0][0]
+            if sum(crit) < 1:
+                print("Error: Symbol not found")
+                return
+            B[i, :] = E[m, :]
+        
+        scale = numpy.zeros(shape = (int(T[0,n]),1)) # NOT Scale
+        alpha[0, :] = Pi.transpose() * B[0,:]
+        scale[0,0] = sum(alpha[0,:])
+        alpha[0,:] = alpha[0,:]/scale[0,0]
+        
+        for i in range(1,int(T[0,n])):
+            alpha[i,:] = (alpha[i-1,:]*P) * B[i,:]
+            scale[i,0] = sum(alpha[i,:])
+            alpha[i,:] = alpha[i,:]/scale[i,0]
+        
+        beta[int(T[0,n]) - 1,:] = numpy.ones(shape = (1, K)) / scale [int(T[0,n]) - 1,0]
+            
+        for i in range(int(T[0,n]) - 2, -1, -1): #Starting from the second last index and counting down to 0
+            beta[i,:] = (beta[i + 1,:] * B[i + 1,:]) * P.transpose()/scale[i,0]
+            
+        gamma = (alpha * beta) + epsilon
+        gamma = rDiv(gamma,rSum(gamma))
+        
+        gammaSum = sum (gamma)
+        
+        for i in range(int(T[0,n])):
+            # find the letter in the alphabet
+            crit = (Xcurrent[i] == bins)
+            m = numpy.where(crit)[0][0]
+            gammaKsum[m, :] = gammaKsum[m, :] + gamma [i, :]
+        
+     
+        for i in range(int(T[0, n]) - 1):
+            alphaTrans = numpy.zeros(shape = (1,len(alpha[i,:])))
+            alphaTrans[0,:] = alpha[i,:].transpose()
+            
+            betaMB = numpy.zeros(shape = (len(beta[i + 1, :]), 1))
+            betaMB[:,0] = beta[i + 1, :]* B[i + 1, :]
+            
+            fin = numpy.dot(betaMB,alphaTrans)
+            t = P.multiply(fin)
+            sxi = sxi + t / numpy.sum(t)
+        sxi = sparse.lil_matrix(sxi)
+            
+        GammaInit = GammaInit + gamma[0,:]
+        GammaSum = GammaSum + gammaSum
+        
+        for i in range(int(T[0, n]) - 1):
+            Scale[i,:] = Scale[i,:] + numpy.log(scale[i,:])
+        
+        Scale[int(T[0, n]) - 1,:] = Scale[int(T[0, n]) - 1,:] + numpy.log(scale[int(T[0, n]) - 1,:])
+        
+    """
+    NOTE!
+    Next is to adapt the M step and integrate into the cycles
+    """
+    print(Scale)
     pass
+
+def rDiv (X, Y):
+    N, M = X.shape
+    S = Y.shape
+    if len(S) > 1:
+        K, L = S
+    else:
+        K = S[0]
+        L = 1
+    
+    if N!=K or L!=1:
+        print("Error in Row division!")
+        return None
+            
+    Z = numpy.zeros_like(X)
+    
+    if M < N:
+        for m in range(M):
+            Z[:, m] = X[:, m] / Y
+    else:
+        for n in range(N):
+            Z[n, :] = X [n, :] / Y[n]
+    
+    return (Z)
+
+def rSum(X):
+    N, M = X.shape
+    
+    Z = numpy.zeros(N)
+    
+    if M == 1:
+        Z = X
+    elif M < 2 * N:
+        for m in range(M):
+            Z = Z + X[:, m]
+    else:
+        for n in range(N):
+            Z[n] = numpy.sum(X[n, :])
+    return (Z)
+
 
 def cSum (X):
     '''
@@ -98,17 +232,17 @@ def cSum (X):
     return (Z)
 
 def cDiv(X, Y):
-    #Solve the problem with cDiv
-    if (len(X[0, :]) != len(Y[0, :])) or (len(Y[:, 0] != 1)):
-        print('Error in C Division')
+    if (len(X[0, :]) != len(Y)) or (len(Y.shape) != 1):
+        print('Error in Column  Division')
         return (None)
-    
+     
     Z = numpy.zeros_like(X)
-    
+        
     for i in range(len(X[:,0])):
         Z[i, :] = X[i, :] / Y
     
     return (Z)
+
 def prior_transition_matrix(K, LR):
     '''
     ****************************************************

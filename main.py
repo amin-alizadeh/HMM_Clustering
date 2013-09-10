@@ -14,7 +14,7 @@ M = 12  # output symbols
 N = 8  # states
 LR = 2  # degree of play in the left-to-right HMM transition matrix 
 
-gesture = 'z'
+gesture = 'circle'
 
 
 def main ():
@@ -30,8 +30,16 @@ def main ():
     TRTS = classifier.classifier()
     
     centroids = TRTS.get_point_centroids(training, N, D)
+    cent2 = TRTS.get_point_centroids(testing, N, D)
     ATrainBinned = TRTS.get_point_clusters(training, centroids, D)
     ATestBinned = TRTS.get_point_clusters(testing, centroids, D)
+    ATestBinned2 = TRTS.get_point_clusters(testing, cent2, D)
+    print(testing.shape)
+    return
+#     for x in range(len(ATestBinned)):
+#         for y in range(len(ATestBinned[0])):
+#             print(ATestBinned[x,y,0], ATestBinned2[x,y,0], ATrainBinned[x,y,0])
+#     return
     '''
     ****************************************************
     *  Training

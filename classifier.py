@@ -6,7 +6,6 @@ Created on Jul 24, 2013
 import numpy
 import math
 import sys
-from scipy import sparse
 
 class classifier(object):
     '''
@@ -157,13 +156,13 @@ class classifier(object):
         K = len(centroids[:, 0])
         for n in range(data.shape[0]):
             for i in range(data.shape[1]):
-                temp = numpy.zeros(shape=(K, 1))
+                temp = numpy.zeros(shape=(K))
                 for j in range(K):
                     if D == 3:
                         temp[j] = math.sqrt((centroids[j, 0] - data[n, i, 0]) ** 2 + (centroids[j, 1] - data[n, i, 1]) ** 2 + (centroids[j, 2] - data[n, i, 2]) ** 2)
                 
                 idx, I = min((val, idx) for (idx, val) in enumerate(temp))
-                XClustered[i, n, 0] = I  # TO FINISH AND RETURN CORRECTLY
+                XClustered[i, n, 0] = I
         
         return XClustered
 
@@ -201,11 +200,14 @@ class classifier(object):
             T[0, n] = len(X[0, :, 0])
         
         TMAX = T.max()
+        """
         print('********************************************************************');
         print('Training %d sequences of maximum length %d from an alphabet of size %d' % (N, TMAX, num_bins));
         print('HMM with %d hidden states' % K);
         print('********************************************************************');
+        """
         rd = numpy.random.rand(num_bins, K)
+        
         """
         #REMOVE THE FOLLOWING
         r =  numpy.matrix('0.13840742  0.37774919  0.73971265  0.10260062  0.52799844  0.84634679  0.95247194  0.55089368  0.7634405   0.95265488  0.65547449  0.14542012; 0.79203228  0.23923569  0.54542612  0.20833453  0.99105794  0.32188346   0.59534973  0.89750548  0.66170189  0.92220266  0.43715002  0.14287228; 0.8594316   0.52905046  0.94455854  0.2370784   0.67138739  0.69332352   0.63358944  0.43099664  0.54580393  0.36769975  0.57135703  0.96968013; 0.17165512  0.47319164  0.50326109  0.57501913  0.15378144  0.21838713   0.29350008  0.85767455  0.41370775  0.69666658  0.10536083  0.38186331; 0.15476522  0.51562812  0.48478556  0.34682423  0.17469829  0.36680453   0.78796097  0.29453568  0.68088392  0.20358457  0.35758929  0.78457648; 0.03785457  0.18887611  0.869368    0.57801324  0.85593098  0.46747172   0.01598077  0.0152702   0.47954854  0.71670512  0.54985305  0.43920347; 0.62782384  0.16444154  0.5743267   0.78273275  0.40120534  0.9502203   0.25755689  0.89827889  0.571113    0.4517351   0.19263601  0.04172249; 0.48224823  0.28270609  0.43049263  0.14477011  0.77602924  0.19677031   0.62952399  0.69589213  0.47224108  0.5373157   0.56123885  0.22894984')
@@ -337,13 +339,13 @@ class classifier(object):
             lik = numpy.sum(Scale)
             LL.append(lik)
             
-            print("Cycle %d log likelihood = %.3f " % (cycle + 1, lik))
+            #print("Cycle %d log likelihood = %.3f " % (cycle + 1, lik))
             if cycle < 2:
                 likbase = lik
             elif lik < (oldlik - 1e-6):
                 print("vionum_binstion")
             elif ((lik - likbase) < ((1 + tol) * (oldlik - likbase))) or math.isinf(lik):
-                print("\nEND\n")
+                print("END...")
                 break
             
         return (E, P, Pi, LL)

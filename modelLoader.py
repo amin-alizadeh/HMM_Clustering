@@ -1,8 +1,4 @@
-'''
-Created on Jul 25, 2013
 
-@author: Amin
-'''
 import os
 import csv
 import numpy
@@ -93,7 +89,7 @@ class Loader(object):
  
 
 def main():
-    path = "data\\model\\"
+    path = "data\\observations\\model\\"
     modelLoader = Loader()
     models = modelLoader.getAllModels(path)
     print(models.keys())

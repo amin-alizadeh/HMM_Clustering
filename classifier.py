@@ -18,9 +18,7 @@ class classifier(object):
         Constructor
         '''
  
-    
-    def tst (self, X, D):
-        print(X, D)
+
         
         
     def get_point_centroids(self, data, K, D):
@@ -31,7 +29,7 @@ class classifier(object):
                 for j in range(D):  # 3
                     mean[n, j] = mean[n, j] + data[n,i,j]
 #                     print(data[n,i,j])
-            mean[n,:] = mean[n,:] / data.shape[1]
+            mean[n,:] = mean[n,:] / data.shape[1] # /10
 
         centroids, points, idx = self.kmeans(mean, K)
         self.centroids = centroids
@@ -154,6 +152,7 @@ class classifier(object):
             data = tmp
         
         K = len(centroids[:, 0])
+
         for n in range(data.shape[0]):
             for i in range(data.shape[1]):
                 temp = numpy.zeros(shape=(K))
@@ -452,6 +451,9 @@ class classifier(object):
         ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
         POSSIBILITY OF SUCH DAMAGE.
         """
+        # Clusters, P, E.transpose(), Pi
+        # o       , a, b            , pi
+        print(a.shape, o.shape, b.shape)
         n = a.shape[1]
         T = len(o)
         m = numpy.zeros(shape=(T, n))

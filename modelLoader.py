@@ -19,7 +19,8 @@ class Loader(object):
         models = {}
         for name in allFileNames:
             model = {}
-            model["E"], model["P"], model["Pi"], model["centroids"], model["threshold"] = self.load_model(path + name)
+            model["E"], model["P"], model["Pi"], model["centroids"], model["threshold"] = \
+            self.load_model(path + name)
             modelName = name.partition(".csv")[0]
             models[modelName] = model
         

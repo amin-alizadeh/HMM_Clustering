@@ -43,7 +43,7 @@ def main():
     return
 #     print(i)
     oneTest = tests["1"]
-    oneTest = data.get_tests_attached(oneTest)
+    #oneTest = data.get_tests_attached(oneTest)
     ATestBinned = TS.get_point_clusters(oneTest, cent, D)
     print(ATestBinned.shape)
 #     print('\n********************************************************************')

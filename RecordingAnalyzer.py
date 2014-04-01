@@ -3,7 +3,8 @@ import sys
 import csv
 import numpy
 import math
-from hmm_numeric import hmm_numeric
+from dataflow import dataflow
+
 root_path = "data" + os.sep + "unitytrain"
 gesture_name = "circle-r-cw"
 D = 3  # the number of dimensions to use: X, Y, Z
@@ -19,15 +20,24 @@ def main ():
     for file in allFiles:
         all_trains.append(get_xyz_data(file))
     
+    """
+    joints:
+    Dictionary: keys -> joints such as "Body", "Hand_R", etc.
+                values -> List of all coordinates
+                        elements of the list -> Numpy array of the coordinates
+    """
     joints = put_joints_together (all_trains)
-    centroids = {}
-    train_binned = {}
-    joint_header = "Hand_R"
-    centroids[joint_header], points, idx = kmeans(joints[joint_header], N)
-    train_binned[joint_header] = get_point_clusters(joints[joint_header], centroids[joint_header])
     
-    print(train_binned[joint_header].shape)
+    joint_header = "Hand_R"
+    centroids = get_point_centroids (joints, N)
+    
+    train_binned = get_point_clusters(joints, centroids)
+    """
+    for key in train_binned.keys():
+        for item in train_binned[key]:
+            print(key, ": ", item.shape)
 
+    """
     '''
     ****************************************************
     *  Training
@@ -40,9 +50,119 @@ def main ():
      # Train the model:
     b = [x for x in range(N)]
     cyc = 50
-    print(train_binned[joint_header].shape)
-    dhmm_numeric(train_binned[joint_header], pP, b, M, cyc, .00001)
-    #E, P, Pi, LL = hmm_numeric.dhmm_numeric(train_binned[joint_header], pP, b, M, cyc, .00001)
+    training_data_binned = train_binned[joint_header]
+    E, P, Pi, LL = dhmm_numeric(training_data_binned, pP, b, M, cyc, .00001)
+    
+    sumLik = 0
+    minLik = numpy.Infinity
+    
+    for i in range(len(training_data_binned)):
+        lik = pr_hmm(training_data_binned[i], P, E, Pi)
+        if lik < minLik:
+            minLik = lik
+        sumLik = sumLik + lik
+    
+    gestureRecThreshold = 2.0 * sumLik / len(training_data_binned)
+    
+    print('\n********************************************************************')
+    print('Testing %d sequences for a log likelihood greater than %.4f' % (1, gestureRecThreshold))
+    print('********************************************************************\n')
+    
+    score = pr_hmm(training_data_binned[3], P, E, Pi)
+    if score > gestureRecThreshold:
+        print("Log Likelihood: %.3f > %.3f (threshold) -- FOUND %s Gesture" % (score, gestureRecThreshold, "circle"))
+    else:
+        print("Log Likelihood: %.3f < %.3f (threshold) -- NO %s Gesture" % (score, gestureRecThreshold, "circle"))
+    
+    
+    #dtf = dataflow(root_path, gesture_name)
+    #dtf.store_model(E, P, Pi, centroids[joint_header], gestureRecThreshold)
+    
+        
+def pr_hmm(o, a, b, pi):
+    """
+    INPUTS:
+    O=Given observation sequence labeled in numerics
+    A(N,N)=transition probability matrix
+    B(N,M)=Emission matrix
+    pi=initial probability matrix
+    Output
+    P=probability of given sequence in the given model
+    
+    Copyright (c) 2009, kannu mehta
+    All rights reserved.
+    
+    Redistribution and use in source and binary forms, with or without 
+    modification, are permitted provided that the following conditions are 
+    met:
+    * Redistributions of source code must retain the above copyright 
+    notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright 
+    notice, this list of conditions and the following disclaimer in 
+    the documentation and/or other materials provided with the distribution
+           
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
+    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
+    ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE 
+    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+    CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
+    SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+    INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
+    CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+    ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+    POSSIBILITY OF SUCH DAMAGE.
+    """
+    # Clusters, P, E.transpose(), Pi
+    # o       , a, b            , pi
+    n = a.shape[1]
+    T = len(o)
+    m = numpy.zeros(shape=(T, n))
+    # it uses forward algorithm to compute the probability
+    for i in range(n):  # initilization
+        m[0, i] = b[int(o[0]), i] * pi[i]
+        
+    for t in range(T - 1):  # recursion
+        for j in range(n):
+            z = 0
+            for i in range(n):
+                z = z + a[i, j] * m[t, i]
+            m[t + 1, j] = z * b[int(o[t + 1]), j]
+        
+    p = 0
+    
+    for i in range(n):  # termination
+        p = p + m[T - 1, i]
+    
+    if p != 0:
+        p = math.log(p)
+    else:
+        p = float('-inf')
+        
+    return p
+
+def get_point_centroids (data, N):
+    headers = list(data.keys())
+    
+    number_of_rows = 0
+    
+    for item in data[headers[0]]:
+        number_of_rows = number_of_rows + len(item)
+    
+    centroids = {}
+    
+    for header in headers:
+        merged = numpy.empty(shape = (number_of_rows, 3))
+        this_row = 0
+        for item in data[header]:
+            length = len(item)
+            merged[this_row: this_row + length, :] = item
+            this_row = this_row + length
+        centroids[header], points, idx = kmeans(merged, N)
+    
+    return centroids
+    
+
 
 def prior_transition_matrix(K, LR):
     '''
@@ -69,21 +189,14 @@ def put_joints_together (all_joints):
     
     headers = list(all_joints[0].keys())
     joints = {}
-    number_of_rows = 0
-    for entry in all_joints:
-        number_of_rows += len(entry[headers[0]])
-    
     
     for header in headers:
-        j = numpy.zeros(shape = (number_of_rows, 3))
-        rows_filled = 0
-        for entry in all_joints:
-            this_rows = len(entry[header])
-            j[rows_filled:rows_filled + this_rows, : ] = entry[header]
-            rows_filled = rows_filled + this_rows
-        joints[header] = j
-        
-    return joints 
+        each_joint = []
+        for t in all_joints:
+            each_joint.append(t[header])
+        joints[header] = each_joint
+    
+    return joints
 
 def get_All_Files (path):
     files = []
@@ -104,10 +217,37 @@ def get_xyz_data(path):
     f.close()
     return d
 
-def get_point_clusters(data, centroids):
+def get_point_clusters(all_data, all_centroids):
+    
+    all_clustered = {}
+    headers = list(all_data.keys())
+    for header in headers:
+        clustered = []
+        for data in all_data[header]:
+            length = len(data)
+            XClustered = numpy.empty(length)
+            centroids = all_centroids[header]
+            number_of_clusters = len(centroids)
+            
+            for i in range(length):
+                temp = numpy.zeros(shape=(number_of_clusters))
+                for j in range(number_of_clusters):
+                    temp[j] = math.sqrt((centroids[j, 0] - data[i, 0]) ** 2 + \
+                                        (centroids[j, 1] - data[i, 1]) ** 2 + \
+                                        (centroids[j, 2] - data[i, 2]) ** 2)
+                
+                idx, I = min((val, idx) for (idx, val) in enumerate(temp))
+                XClustered[i] = I
+            clustered.append(XClustered)
+            
+
+        all_clustered[header] = clustered
+            
+    
+    return all_clustered
     length = len(data)
     XClustered = numpy.empty(length)
-    D = 3
+
     number_of_clusters = len(centroids)
 
     for i in range(length):
@@ -151,19 +291,6 @@ def kmeans(data, nbCluster):
     # every row is a centroid
     centroid = numpy.random.rand(nbCluster, data_dim)
     
-    """
-    # REMOVE THE FOLLOWING
-    cent = numpy.matrix('0.47476265  0.00958586  0.77111729; 0.64059689  0.24520689  0.15797167;  0.68462691  0.48319283  0.0998451;  0.72207494  0.67570182  0.13977921;  0.72224763  0.62701183  0.25630908;  0.71363896  0.10502063  0.57669729;  0.32202668  0.64455021  0.6286159; 0.5545931   0.63787338  0.78358486')
-    centroid = numpy.empty(shape = (nbCluster, data_dim))
-    for i in range(nbCluster):
-        for j in range(data_dim):
-            centroid[i,j] = cent[i,j]
-#         print(centroid[0,:])
-#         print(data_min)
-#         print(centroid[0, :] + data_min)
-#         print(centroid[0, 0] + data_min[0])
-    # <----- REMOVE UNTIL HERE
-    """
     for i in range(len(centroid[:, 1])):
         centroid [i, :] = centroid[i, :] * data_diff
         centroid [i, :] = centroid[i, :] + data_min
@@ -230,7 +357,7 @@ def kmeans(data, nbCluster):
     #         print(pos_diff)
         return (centroid, pointsInCluster, assignment)
 
-def rDiv (self, X, Y):
+def rDiv (X, Y):
     N, M = X.shape
     S = Y.shape
     if len(S) > 1:
@@ -254,7 +381,7 @@ def rDiv (self, X, Y):
     
     return (Z)
 
-def rSum(self, X):
+def rSum(X):
         N, M = X.shape
         Z = numpy.zeros(shape=(N))
         if M == 1:
@@ -268,7 +395,7 @@ def rSum(self, X):
                 Z[0, n] = numpy.sum(X[n, :])
         return (Z) 
  
-def cSum (self, X):
+def cSum (X):
     '''
        Column sum
     '''
@@ -281,7 +408,7 @@ def cSum (self, X):
     return (Z)
 
 
-def cDiv(self, X, Y):
+def cDiv(X, Y):
     if (X.shape[1] != Y.shape[1]):
         print('Error in Column Division shapes')
         return (None)
@@ -300,38 +427,30 @@ def cDiv(self, X, Y):
 
     
 
-def dhmm_numeric(X, pP, bins, K=12, cyc=100, tol=0.0001):
+def dhmm_numeric(data, pP, bins, K=12, cyc=100, tol=0.0001):
     
-    print(X.shape)
-    return
     num_bins = len(bins)
     epsilon = sys.float_info.epsilon
     # number of sequences
-    N = len(X[:, 0, 0])
+    N = len(data)
+    
+    
     # calculating the length of each sequence
-    T = numpy.ones(shape=(1, N))
+    T = numpy.empty(shape=(1, N))
     
     for n in range(N):
-        T[0, n] = len(X[0, :, 0])
+        T[0, n] = len(data[n])
     
-    TMAX = len(X)
-    """
+    TMAX = T.max()
+    
+    
     print('********************************************************************');
     print('Training %d sequences of maximum length %d from an alphabet of size %d' % (N, TMAX, num_bins));
     print('HMM with %d hidden states' % K);
     print('********************************************************************');
-    """
-    rd = numpy.random.rand(num_bins, K)
     
-    """
-    #REMOVE THE FOLLOWING
-    r =  numpy.matrix('0.13840742  0.37774919  0.73971265  0.10260062  0.52799844  0.84634679  0.95247194  0.55089368  0.7634405   0.95265488  0.65547449  0.14542012; 0.79203228  0.23923569  0.54542612  0.20833453  0.99105794  0.32188346   0.59534973  0.89750548  0.66170189  0.92220266  0.43715002  0.14287228; 0.8594316   0.52905046  0.94455854  0.2370784   0.67138739  0.69332352   0.63358944  0.43099664  0.54580393  0.36769975  0.57135703  0.96968013; 0.17165512  0.47319164  0.50326109  0.57501913  0.15378144  0.21838713   0.29350008  0.85767455  0.41370775  0.69666658  0.10536083  0.38186331; 0.15476522  0.51562812  0.48478556  0.34682423  0.17469829  0.36680453   0.78796097  0.29453568  0.68088392  0.20358457  0.35758929  0.78457648; 0.03785457  0.18887611  0.869368    0.57801324  0.85593098  0.46747172   0.01598077  0.0152702   0.47954854  0.71670512  0.54985305  0.43920347; 0.62782384  0.16444154  0.5743267   0.78273275  0.40120534  0.9502203   0.25755689  0.89827889  0.571113    0.4517351   0.19263601  0.04172249; 0.48224823  0.28270609  0.43049263  0.14477011  0.77602924  0.19677031   0.62952399  0.69589213  0.47224108  0.5373157   0.56123885  0.22894984')
-    rd = numpy.empty(shape = (num_bins, K))
-    for i in range(num_bins):
-        for j in range(K):
-            rd[i,j] = r[i,j]
-    # REMOVE UTIL HERE
-    """
+    rd = numpy.random.rand(num_bins, K)
+
     E = 0.1 * rd
     E = E + numpy.ones(shape=(num_bins, K))
     E = E / num_bins
@@ -369,8 +488,8 @@ def dhmm_numeric(X, pP, bins, K=12, cyc=100, tol=0.0001):
             gamma = numpy.zeros(shape=(int(T[0, n]), K))
             gammaksum = numpy.zeros(shape=(num_bins, K))  # not Gammaksum!
             
-            # Inital values of B = Prob(output|s_i), given data X
-            Xcurrent = X[n, :, :]
+            # Inital values of B = Prob(output|s_i), given data data
+            Xcurrent = data[n]
 
             for i in range(int(T[0, n])):
                 crit = (Xcurrent[i] == bins)
@@ -454,7 +573,7 @@ def dhmm_numeric(X, pP, bins, K=12, cyc=100, tol=0.0001):
         lik = numpy.sum(Scale)
         LL.append(lik)
         
-        #print("Cycle %d log likelihood = %.3f " % (cycle + 1, lik))
+        print("Cycle %d log likelihood = %.3f " % (cycle + 1, lik))
         if cycle < 2:
             likbase = lik
         elif lik < (oldlik - 1e-6):

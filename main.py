@@ -50,9 +50,9 @@ def main ():
     
     # Train the model:
     b = [x for x in range(N)]
-    cyc = 50
+    cyc = 5
     E, P, Pi, LL = TRTS.dhmm_numeric(ATrainBinned, pP, b, M, cyc, .00001)
-    return
+    
     '''
     ****************************************************
     *  Testing
@@ -64,7 +64,7 @@ def main ():
     
     ATrainBinned = ATrainBinned[:,:,0]
     ATestBinned = ATestBinned[:,:,0]
-    
+
     for j in range(len(ATrainBinned)):
         lik = TRTS.pr_hmm(ATrainBinned[j], P, E.transpose(), Pi)
         if lik < minLik:
@@ -79,7 +79,7 @@ def main ():
     
     print('\n********************************************************************')
     print('Testing %d sequences for a log likelihood greater than %.4f' % (len(ATestBinned), gestureRecThreshold))
-    print('********************************************************************\n');
+    print('********************************************************************\n')
     
     recs = 0
     tLL = numpy.zeros(shape=(len(ATestBinned)))

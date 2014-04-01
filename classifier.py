@@ -188,6 +188,7 @@ class classifier(object):
         
         D = len(X[0, 0, :])
         
+
         num_bins = len(bins)
         epsilon = sys.float_info.epsilon
         # number of sequences
@@ -453,7 +454,7 @@ class classifier(object):
         """
         # Clusters, P, E.transpose(), Pi
         # o       , a, b            , pi
-        print(a.shape, o.shape, b.shape)
+
         n = a.shape[1]
         T = len(o)
         m = numpy.zeros(shape=(T, n))

@@ -20,19 +20,19 @@ class hmm_numeric(object):
         '''
         
         
-    def dhmm_numeric(self, X, pP, bins, K=12, cyc=100, tol=0.0001):
+    def dhmm_numeric(self, data, pP, bins, K=12, cyc=100, tol=0.0001):
         
-        print(X.shape)
+        print(data.shape)
         return
         num_bins = len(bins)
         epsilon = sys.float_info.epsilon
         # number of sequences
-        N = len(X[:, 0, 0])
+        N = len(data[:, 0, 0])
         # calculating the length of each sequence
         T = numpy.ones(shape=(1, N))
         
         for n in range(N):
-            T[0, n] = len(X[0, :, 0])
+            T[0, n] = len(data[0, :, 0])
         
         TMAX = T.max()
         """
@@ -89,8 +89,8 @@ class hmm_numeric(object):
                 gamma = numpy.zeros(shape=(int(T[0, n]), K))
                 gammaksum = numpy.zeros(shape=(num_bins, K))  # not Gammaksum!
                 
-                # Inital values of B = Prob(output|s_i), given data X
-                Xcurrent = X[n, :, :]
+                # Inital values of B = Prob(output|s_i), given data data
+                Xcurrent = data[n, :, :]
 
                 for i in range(int(T[0, n])):
                     crit = (Xcurrent[i] == bins)

@@ -418,7 +418,7 @@ class classifier(object):
         return (Z)
     
         
-    def pr_hmm(self, o, a, b, pi):
+    def pr_hmm(self, clusters, P, E, pi):
         """
         INPUTS:
         O=Given observation sequence labeled in numerics
@@ -453,21 +453,21 @@ class classifier(object):
         POSSIBILITY OF SUCH DAMAGE.
         """
         # Clusters, P, E.transpose(), Pi
-        # o       , a, b            , pi
+        # clusters       , P, E            , pi
 
-        n = a.shape[1]
-        T = len(o)
+        n = P.shape[1]
+        T = len(clusters)
         m = numpy.zeros(shape=(T, n))
         # it uses forward algorithm to compute the probability
         for i in range(n):  # initilization
-            m[0, i] = b[i, int(o[0])] * pi[i]
+            m[0, i] = E[i, int(clusters[0])] * pi[i]
             
         for t in range(T - 1):  # recursion
             for j in range(n):
                 z = 0
                 for i in range(n):
-                    z = z + a[i, j] * m[t, i]
-                m[t + 1, j] = z * b[j, int(o[t + 1])]
+                    z = z + P[i, j] * m[t, i]
+                m[t + 1, j] = z * E[j, int(clusters[t + 1])]
             
         p = 0
         

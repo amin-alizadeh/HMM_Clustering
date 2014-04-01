@@ -49,13 +49,13 @@ def main ():
     
      # Train the model:
     b = [x for x in range(N)]
-    cyc = 50
+    cyc = 5
     training_data_binned = train_binned[joint_header]
     E, P, Pi, LL = dhmm_numeric(training_data_binned, pP, b, M, cyc, .00001)
     
     sumLik = 0
     minLik = numpy.Infinity
-    
+
     for i in range(len(training_data_binned)):
         lik = pr_hmm(training_data_binned[i], P, E, Pi)
         if lik < minLik:
@@ -67,19 +67,23 @@ def main ():
     print('\n********************************************************************')
     print('Testing %d sequences for a log likelihood greater than %.4f' % (1, gestureRecThreshold))
     print('********************************************************************\n')
+    recs = 0
+    for one_training in training_data_binned:
+        score = pr_hmm(one_training, P, E, Pi)
+        if score > gestureRecThreshold:
+            print("Log Likelihood: %.3f > %.3f (threshold) -- FOUND %s Gesture" % (score, gestureRecThreshold, "circle"))
+            recs = recs + 1
+        else:
+            print("Log Likelihood: %.3f < %.3f (threshold) -- NO %s Gesture" % (score, gestureRecThreshold, "circle"))
     
-    score = pr_hmm(training_data_binned[3], P, E, Pi)
-    if score > gestureRecThreshold:
-        print("Log Likelihood: %.3f > %.3f (threshold) -- FOUND %s Gesture" % (score, gestureRecThreshold, "circle"))
-    else:
-        print("Log Likelihood: %.3f < %.3f (threshold) -- NO %s Gesture" % (score, gestureRecThreshold, "circle"))
-    
+        print('Recognition success rate: %.2f percent\n' % (100 * recs / len(training_data_binned)))
+
     
     #dtf = dataflow(root_path, gesture_name)
     #dtf.store_model(E, P, Pi, centroids[joint_header], gestureRecThreshold)
     
         
-def pr_hmm(o, a, b, pi):
+def pr_hmm(clusters, P, E, pi):
     """
     INPUTS:
     O=Given observation sequence labeled in numerics
@@ -113,21 +117,21 @@ def pr_hmm(o, a, b, pi):
     ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
     POSSIBILITY OF SUCH DAMAGE.
     """
-    # Clusters, P, E.transpose(), Pi
-    # o       , a, b            , pi
-    n = a.shape[1]
-    T = len(o)
+    # Clusters, P, E , Pi
+    # clusters       , P, E , pi
+    n = P.shape[1] # Which is M, the number of hidden symbols
+    T = len(clusters) # The number of clustered observed data
     m = numpy.zeros(shape=(T, n))
     # it uses forward algorithm to compute the probability
     for i in range(n):  # initilization
-        m[0, i] = b[int(o[0]), i] * pi[i]
+        m[0, i] = E[int(clusters[0]), i] * pi[i]
         
     for t in range(T - 1):  # recursion
         for j in range(n):
             z = 0
             for i in range(n):
-                z = z + a[i, j] * m[t, i]
-            m[t + 1, j] = z * b[int(o[t + 1]), j]
+                z = z + P[i, j] * m[t, i]
+            m[t + 1, j] = z * E[int(clusters[t + 1]), j]
         
     p = 0
     
@@ -245,22 +249,6 @@ def get_point_clusters(all_data, all_centroids):
             
     
     return all_clustered
-    length = len(data)
-    XClustered = numpy.empty(length)
-
-    number_of_clusters = len(centroids)
-
-    for i in range(length):
-        temp = numpy.zeros(shape=(number_of_clusters))
-        for j in range(number_of_clusters):
-            temp[j] = math.sqrt((centroids[j, 0] - data[i, 0]) ** 2 + \
-                                (centroids[j, 1] - data[i, 1]) ** 2 + \
-                                (centroids[j, 2] - data[i, 2]) ** 2)
-        
-        idx, I = min((val, idx) for (idx, val) in enumerate(temp))
-        XClustered[i] = I
-
-    return XClustered
 
 def kmeans(data, nbCluster):
     '''

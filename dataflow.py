@@ -126,15 +126,7 @@ class dataflow(object):
         Ewriter.writerows(cent)
         Ewriter.writerow([thr])
         Ef.close()
-        
-#         f = open(self.path + "model" + os.sep + self.name + ".txt", "w")
-#         print("Shape: ", E.shape, file = f)
-#         print("E: ", E, file = f)
-#         print("P: ", P.toarray(), file = f)
-#         print("Pi: ", Pi, file = f)
-#         print("Centroids: ", cent, file = f)
-#         print("Threshold: ", thr, file = f)
-#         f.close()
+
     def store_Binned(self, TrainBinned, TestBinned):
         Ef = open(self.path + "Binned" + os.sep + self.name + ".csv", "w")
         Ewriter = csv.writer(Ef, delimiter = ',', quotechar = '', quoting = csv.QUOTE_NONE, dialect = csv.unix_dialect)

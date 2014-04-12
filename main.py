@@ -34,10 +34,7 @@ def main ():
     ATrainBinned = TRTS.get_point_clusters(training, centroids, D)
     ATestBinned = TRTS.get_point_clusters(testing, centroids, D)
     ATestBinned2 = TRTS.get_point_clusters(testing, cent2, D)
-#     for x in range(len(ATestBinned)):
-#         for y in range(len(ATestBinned[0])):
-#             print(ATestBinned[x,y,0], ATestBinned2[x,y,0], ATrainBinned[x,y,0])
-#     return
+
 
     '''
     ****************************************************
@@ -72,7 +69,8 @@ def main ():
         sumLik = sumLik + lik
     
     gestureRecThreshold = 2.0 * sumLik / len(ATrainBinned)
-
+	
+	#Uncomment the following to store the models.
    # data.store_model(E, P, Pi, centroids, gestureRecThreshold)
 #     data.store_Binned(ATrainBinned[:,:,0],ATestBinned[:,:,0])
     
@@ -84,8 +82,7 @@ def main ():
     recs = 0
     tLL = numpy.zeros(shape=(len(ATestBinned)))
     for j in range(len(ATestBinned)):
-        #print(ATestBinned[j])
-        #print(E.shape)
+
         tLL[j] = TRTS.pr_hmm(ATestBinned[j], P, E.transpose(), Pi)
         if tLL[j] > gestureRecThreshold:
             recs = recs + 1

@@ -6,13 +6,17 @@ import math
 from dataflow import dataflow
 
 root_path = "data" + os.sep + "unitytrain"
-gesture_name = "circle-r-cw"
+gesture_name = "circle-r-ccw"
+orient = "R"
+joint_header = "Hand_" + orient
+parent_joint_header = "Shoulder_" + orient
 D = 3  # the number of dimensions to use: X, Y, Z
 M = 12  # output symbols
 N = 8  # states
-LR = 2  # degree of play in the left-to-right HMM transition matrix 
+LR = 1  # degree of play in the left-to-right HMM transition matrix 
 
 def main ():
+
     training_path = root_path + os.sep + gesture_name
     allFiles = get_All_Files (training_path)
     all_trains = [] #Array of dictionaries. Each dictionary contains coordinates of  
@@ -28,10 +32,17 @@ def main ():
     """
     joints = put_joints_together (all_trains)
     
-    joint_header = "Hand_R"
-    centroids = get_point_centroids (joints, N)
+    normalized_joint = {}
     
-    train_binned = get_point_clusters(joints, centroids)
+    normalized_joint[joint_header] =  normalize_joint_with_parent (joints, joint_header, parent_joint_header)
+    
+    centroids = get_point_centroids (normalized_joint, N)
+    
+    print (centroids[joint_header])
+    store_centroids(centroids[joint_header], root_path, gesture_name)
+    return
+    train_binned = get_point_clusters(normalized_joint, centroids)
+    
     """
     for key in train_binned.keys():
         for item in train_binned[key]:
@@ -49,7 +60,7 @@ def main ():
     
      # Train the model:
     b = [x for x in range(N)]
-    cyc = 5
+    cyc = 60
     training_data_binned = train_binned[joint_header]
     E, P, Pi, LL = dhmm_numeric(training_data_binned, pP, b, M, cyc, .00001)
     
@@ -63,7 +74,7 @@ def main ():
         sumLik = sumLik + lik
     
     gestureRecThreshold = 2.0 * sumLik / len(training_data_binned)
-    
+    """
     print('\n********************************************************************')
     print('Testing %d sequences for a log likelihood greater than %.4f' % (1, gestureRecThreshold))
     print('********************************************************************\n')
@@ -78,11 +89,25 @@ def main ():
     
         print('Recognition success rate: %.2f percent\n' % (100 * recs / len(training_data_binned)))
 
+    """
+    dtf = dataflow(root_path, gesture_name)
+    dtf.store_model(E, P, Pi, centroids[joint_header], gestureRecThreshold)
     
-    #dtf = dataflow(root_path, gesture_name)
-    #dtf.store_model(E, P, Pi, centroids[joint_header], gestureRecThreshold)
+def store_centroids (centroids, path, name):
+    Ef = open(path + os.sep + "centroids" + os.sep + name + ".csv", "w")
+    Ewriter = csv.writer(Ef, delimiter = ',', quotechar = '', quoting = csv.QUOTE_NONE, dialect = csv.unix_dialect)
+    Ewriter.writerows(centroids)
+    Ef.close()
+    print("Centroids stored to file %s successfully..." %(name))
     
-        
+def normalize_joint_with_parent (joints, header, parent):
+    normalized_header = []
+    for i in range(len(joints[header])):
+        normalized = joints[header][i] - joints[parent][i]
+        normalized_header.append(normalized)
+    
+    return normalized_header
+   
 def pr_hmm(clusters, P, E, pi):
     """
     INPUTS:

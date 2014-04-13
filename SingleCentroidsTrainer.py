@@ -3,61 +3,42 @@ import sys
 import csv
 import numpy
 import math
-from dataflow import dataflow
 
 centroids_path = "all-centroids.csv"
 root_path = "data" + os.sep + "unitytrain"
-gesture_name = "wave-r"
+gesture_name = "circle-r-ccw"
 orient = "R"
 joint_header = "Hand_" + orient
 parent_joint_header = "Shoulder_" + orient
 D = 3  # the number of dimensions to use: X, Y, Z
 M = 12  # output symbols
-N = 6  # states
-LR = 1  # degree of play in the left-to-right HMM transition matrix 
+N = 8  # states
+LR = 2  # degree of play in the left-to-right HMM transition matrix 
 
 def main ():
-
+    
     training_path = root_path + os.sep + gesture_name
     allFiles = get_All_Files (training_path)
-
-    all_trains = [] #Array of dictionaries. Each dictionary contains coordinates of  
-                    #the joints. The name of the joints are the keys of the dictionaries
+    all_trains = [] 
+    """
+        Array of dictionaries. Each dictionary contains coordinates of  
+        the joints. The name of the joints are the keys of the dictionaries
+    """
     for file in allFiles:
         all_trains.append(get_xyz_data(file))
-    
+        
     """
     joints:
-    Dictionary: keys -> joints such as "Body", "Hand_R", etc.
+    Dictionary: keys -> joints such as "Shoulder_R", "Hand_R", etc.
                 values -> List of all coordinates
                         elements of the list -> Numpy array of the coordinates
     """
-    joints = put_joints_together (all_trains)
+   
+    normalized_trains = normalize_joint_with_parent (all_trains, joint_header, parent_joint_header)
+    centroids = get_centroids_data(root_path + os.sep + centroids_path)
     
-    normalized_joint = {}
+    train_binned = get_point_clusters(normalized_trains, centroids)
     
-    normalized_joint[joint_header] =  normalize_joint_with_parent (joints, joint_header, parent_joint_header)
-    
-    centroids = get_point_centroids (normalized_joint, N)
-    train_binned = get_point_clusters(normalized_joint, centroids)
-    """
-    print (centroids[joint_header])
-    store_centroids(centroids[joint_header], root_path, gesture_name)
-    return
-    
-    centroids = get_xyz_data_no_header(root_path + os.sep + centroids_path)
-    print(centroids)
-    
-    train_binned = get_point_clusters(normalized_joint, centroids)
-    print(train_binned)
-    return
-    """
-    """
-    for key in train_binned.keys():
-        for item in train_binned[key]:
-            print(key, ": ", item.shape)
-
-    """
     '''
     ****************************************************
     *  Training
@@ -68,91 +49,34 @@ def main ():
     pP = prior_transition_matrix(M, LR)
     
      # Train the model:
-    b = [x for x in range(N)]
+    b = [x for x in range(len(centroids))]
     cyc = 60
-    training_data_binned = train_binned[joint_header]
-    E, P, Pi, LL = dhmm_numeric(training_data_binned, pP, b, M, cyc, .00001)
+    E, P, Pi, LL = dhmm_numeric(train_binned, pP, b, M, cyc, .00001)
     
     sumLik = 0
     minLik = numpy.Infinity
 
-    for i in range(len(training_data_binned)):
-        lik = pr_hmm(training_data_binned[i], P, E, Pi)
+    for i in range(len(train_binned)):
+        lik = pr_hmm(train_binned[i], P, E, Pi)
         if lik < minLik:
             minLik = lik
         sumLik = sumLik + lik
     
-    gestureRecThreshold = 2.0 * sumLik / len(training_data_binned)
-    """
-    print('\n********************************************************************')
-    print('Testing %d sequences for a log likelihood greater than %.4f' % (1, gestureRecThreshold))
-    print('********************************************************************\n')
-    recs = 0
-    for one_training in training_data_binned:
-        score = pr_hmm(one_training, P, E, Pi)
-        if score > gestureRecThreshold:
-            print("Log Likelihood: %.3f > %.3f (threshold) -- FOUND %s Gesture" % (score, gestureRecThreshold, "circle"))
-            recs = recs + 1
-        else:
-            print("Log Likelihood: %.3f < %.3f (threshold) -- NO %s Gesture" % (score, gestureRecThreshold, "circle"))
-    
-        print('Recognition success rate: %.2f percent\n' % (100 * recs / len(training_data_binned)))
+    gestureRecThreshold = 2.0 * sumLik / len(train_binned)
+    store_model(E, P, Pi, gestureRecThreshold, root_path, gesture_name)
+    print("Model %s with threshold %.3f saved successfully..." %(gesture_name, gestureRecThreshold))
 
-    """
-    #dtf = dataflow(root_path, gesture_name)
-    #dtf.store_model(E, P, Pi, centroids[joint_header], gestureRecThreshold)
-    
-def store_centroids (centroids, path, name):
-    Ef = open(path + os.sep + "centroids" + os.sep + name + ".csv", "w")
+def store_model(E, P, Pi, thr, path, name):
+    Ef = open(path + os.sep + "model" + os.sep + name + ".csv", "w")
     Ewriter = csv.writer(Ef, delimiter = ',', quotechar = '', quoting = csv.QUOTE_NONE, dialect = csv.unix_dialect)
-    Ewriter.writerows(centroids)
+    Ewriter.writerow(E.shape)
+    Ewriter.writerows(E)
+    Ewriter.writerows(P)
+    Ewriter.writerow(Pi)
+    Ewriter.writerow([thr])
     Ef.close()
-    print("Centroids stored to file %s successfully..." %(name))
     
-def normalize_joint_with_parent (joints, header, parent):
-    normalized_header = []
-    for i in range(len(joints[header])):
-        normalized = joints[header][i] - joints[parent][i]
-        normalized_header.append(normalized)
-    
-    return normalized_header
-   
 def pr_hmm(clusters, P, E, pi):
-    """
-    INPUTS:
-    O=Given observation sequence labeled in numerics
-    A(N,N)=transition probability matrix
-    B(N,M)=Emission matrix
-    pi=initial probability matrix
-    Output
-    P=probability of given sequence in the given model
-    
-    Copyright (c) 2009, kannu mehta
-    All rights reserved.
-    
-    Redistribution and use in source and binary forms, with or without 
-    modification, are permitted provided that the following conditions are 
-    met:
-    * Redistributions of source code must retain the above copyright 
-    notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright 
-    notice, this list of conditions and the following disclaimer in 
-    the documentation and/or other materials provided with the distribution
-           
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
-    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
-    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
-    ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE 
-    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
-    CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
-    SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
-    INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
-    CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
-    ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
-    POSSIBILITY OF SUCH DAMAGE.
-    """
-    # Clusters, P, E , Pi
-    # clusters       , P, E , pi
     n = P.shape[1] # Which is M, the number of hidden symbols
     T = len(clusters) # The number of clustered observed data
     m = numpy.zeros(shape=(T, n))
@@ -179,29 +103,6 @@ def pr_hmm(clusters, P, E, pi):
         
     return p
 
-def get_point_centroids (data, N):
-    headers = list(data.keys())
-    
-    number_of_rows = 0
-    
-    for item in data[headers[0]]:
-        number_of_rows = number_of_rows + len(item)
-    
-    centroids = {}
-    
-    for header in headers:
-        merged = numpy.empty(shape = (number_of_rows, 3))
-        this_row = 0
-        for item in data[header]:
-            length = len(item)
-            merged[this_row: this_row + length, :] = item
-            this_row = this_row + length
-        centroids[header], points, idx = kmeans(merged, N)
-    
-    return centroids
-    
-
-
 def prior_transition_matrix(K, LR):
     '''
     ****************************************************
@@ -221,49 +122,24 @@ def prior_transition_matrix(K, LR):
             P[i, i + j] = 1 / ((K - 1) - i + 1)
     return (P)   
 
-def put_joints_together (all_joints):
-    if len(all_joints) < 1:
-        return {}
-    
-    headers = list(all_joints[0].keys())
-    joints = {}
-    
-    for header in headers:
-        each_joint = []
-        for t in all_joints:
-            each_joint.append(t[header])
-        joints[header] = each_joint
-    
-    return joints
-
-def get_All_Files (path):
-    files = []
-    for file in os.listdir(path):
-        files.append(path + os.sep + file)
-    return files
-
-def get_xyz_data(path):
-    f = open(path)
-    c = csv.reader (f, delimiter=',', quotechar='|')
-    first_row = next(f, None).split(',')
-    headers = [first_row[h] for h in range(0, len(first_row), 3)]
-
-    m = numpy.asarray(list(c), dtype = 'float')
-    d = {}
-    for header, i in zip(headers, range(len(headers))):
-        d[header] = m[:, (i * 3):((i + 1) * 3)]
-    f.close()
-    return d
-
-def get_xyz_data_no_header(path):
-    f = open(path)
-    c = csv.reader (f, delimiter=',', quotechar='|')
-    d = numpy.asarray(list(c), dtype = 'float')
-    f.close()
-    return d
-
-def get_point_clusters(all_data, all_centroids):
-    
+def get_point_clusters(all_data, centroids):
+    all_clustered = []
+    number_of_clusters = len(centroids)
+    for data in all_data:
+        length = len(data)
+        XClustered = numpy.empty(length)
+        for i in range(length):
+            temp = numpy.zeros(shape=(number_of_clusters))
+            for j in range(number_of_clusters):
+                temp[j] = math.sqrt((centroids[j, 0] - data[i, 0]) ** 2 + \
+                                            (centroids[j, 1] - data[i, 1]) ** 2 + \
+                                            (centroids[j, 2] - data[i, 2]) ** 2)
+        
+            idx, I = min((val, idx) for (idx, val) in enumerate(temp))
+            XClustered[i] = I
+        all_clustered.append(XClustered)
+        
+    return all_clustered 
     all_clustered = {}
     headers = list(all_data.keys())
     for header in headers:
@@ -290,101 +166,47 @@ def get_point_clusters(all_data, all_centroids):
             
     
     return all_clustered
+def get_centroids_data(path):
+    f = open(path)
+    c = csv.reader (f, delimiter=',', quotechar='|')
+    d = numpy.asarray(list(c), dtype = 'float')
+    f.close()
+    return d
+ 
+def normalize_joint_with_parent (data, header, parent):
+    normalized_header = []
+    for i in range(len(data)):
+        normalized = data[i][header] - data[i][parent]
+        normalized_header.append(normalized)
+    
+    return normalized_header
+   
+def get_All_Files (path):
+    files = []
+    for file in os.listdir(path):
+        files.append(path + os.sep + file)
+    return files
 
-def kmeans(data, nbCluster):
-    '''
-    usage
-    function[centroid, pointsInCluster, assignment]=
-    kmeans(data, nbCluster)
-    
-    Output:
-    centroid: matrix in each row are the Coordinates of a centroid
-    pointsInCluster: row vector with the nbDatapoints belonging to
-    the centroid
-    assignment: row Vector with clusterAssignment of the dataRows
-    
-    Input:
-    data in rows
-    nbCluster : nb of centroids to determine
-    
-    (c) by Christian Herta ( www.christianherta.de )
-    
-    '''
-    data_dim = len(data[0])
-    nbData = len(data)
-    # init the centroids randomly
-    data_min = [min(data[:, 0]), min(data[:, 1]), min(data[:, 2])]
-    data_max = [max(data[:, 0]), max(data[:, 1]), max(data[:, 2])]
-    data_diff = numpy.subtract(data_max, data_min)
+def get_xyz_data(path):
+    f = open(path)
+    c = csv.reader (f, delimiter=',', quotechar='|')
+    first_row = next(f, None).split(',')
+    headers = [first_row[h] for h in range(0, len(first_row), 3)]
 
-    # every row is a centroid
-    centroid = numpy.random.rand(nbCluster, data_dim)
-    
-    for i in range(len(centroid[:, 1])):
-        centroid [i, :] = centroid[i, :] * data_diff
-        centroid [i, :] = centroid[i, :] + data_min
+    m = numpy.asarray(list(c), dtype = 'float')
+    d = {}
+    for header, i in zip(headers, range(len(headers))):
+        d[header] = m[:, (i * 3):((i + 1) * 3)]
+    f.close()
+    return d
 
-    # end init centroids
-    
-    # no stopping at start
-    pos_diff = 1.0
-    
-    # main loop
-    while pos_diff > 0.0:
-        
-        # E-step
-        assignment = numpy.empty(len(data[:, 0]))
-        
-        # assign each datapoint to the closest centroid
-        for d in range(len(data[:, 0])):
-            min_diff = numpy.subtract(data[d, :], centroid[0, :])
-            min_diff = numpy.dot(min_diff, min_diff.transpose())
-            curAssignment = 0
-            
-            for c in range(1, nbCluster):
-                diff2c = numpy.subtract(data[d, :], centroid[c, :])
-                diff2c = numpy.dot(diff2c, diff2c.transpose())
-                if min_diff >= diff2c:
-                    curAssignment = c
-                    min_diff = diff2c
-            
-            # assign the d-th dataPoint
-            assignment[d] = curAssignment
-            # for the stoppingCriterion
-        oldPositions = centroid
-            
-        # M-Step
-        # recalculate the positions of the centroids
-        
-        centroid = numpy.zeros(shape=(nbCluster, data_dim))
-        pointsInCluster = numpy.zeros(shape=(nbCluster, 1))
-        
-        for d in range(len(assignment)):
-            centroid[assignment[d], :] = centroid[assignment[d], :] + data[d, :]
-            pointsInCluster[assignment[d], 0] = pointsInCluster[assignment[d], 0] + 1
-        
-        # pointsInCluster
-        for c in range(nbCluster):
-            
-            if pointsInCluster[c, 0] != 0:
-                centroid[c, :] = centroid[c, :] / pointsInCluster[c, 0]
-            else:
-                # set cluster randomly to new position
-                r = numpy.random.rand(1, data_dim)
-                """
-                # REMOVE FROM HERE ->
-                r[0,0] = 0.82669491
-                r[0,1] = 0.48544819
-                r[0,2] = 0.76186241
-                # <- UNTIL HERE
-                """
-                centroid[c, :] = (r * data_diff) + data_min
-            
-            # stoppingCriterion
-#             print("Centroids: ", centroid, "\nOld:", oldPositions)
-        pos_diff = sum(sum((centroid - oldPositions) ** 2))
-    #         print(pos_diff)
-        return (centroid, pointsInCluster, assignment)
+def get_xyz_data_no_header(path):
+    f = open(path)
+    c = csv.reader (f, delimiter=',', quotechar='|')
+    d = numpy.asarray(list(c), dtype = 'float')
+    f.close()
+    return d
+
 
 def rDiv (X, Y):
     N, M = X.shape
@@ -455,7 +277,6 @@ def cDiv(X, Y):
     return (Z)
 
     
-
 def dhmm_numeric(data, pP, bins, K=12, cyc=100, tol=0.0001):
     
     num_bins = len(bins)
@@ -613,7 +434,5 @@ def dhmm_numeric(data, pP, bins, K=12, cyc=100, tol=0.0001):
         
     return (E, P, Pi, LL)
 
-
-  
 if __name__ == '__main__':
     main ()

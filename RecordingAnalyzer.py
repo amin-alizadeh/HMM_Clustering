@@ -4,17 +4,18 @@ import csv
 import numpy
 import math
 from dataflow import dataflow
+from interpreterInfo import join
 
 centroids_path = "all-centroids.csv"
 root_path = "data" + os.sep + "unitytrain"
-gesture_name = "wave-r"
+gesture_name = "wave-R"
 orient = "R"
 joint_header = "Hand_" + orient
 parent_joint_header = "Shoulder_" + orient
 D = 3  # the number of dimensions to use: X, Y, Z
 M = 12  # output symbols
 N = 6  # states
-LR = 1  # degree of play in the left-to-right HMM transition matrix 
+LR = 2  # degree of play in the left-to-right HMM transition matrix 
 
 def main ():
 
@@ -26,12 +27,19 @@ def main ():
     for file in allFiles:
         all_trains.append(get_xyz_data(file))
     
+
+    directions = get_directed_vectors()
+    N = len(directions)
+    M = N + 6
+    train_directed = get_directed_points(all_trains, joint_header)
+    train_binned_dirs = get_point_clusters_with_directions(train_directed, directions)
     """
     joints:
     Dictionary: keys -> joints such as "Body", "Hand_R", etc.
                 values -> List of all coordinates
                         elements of the list -> Numpy array of the coordinates
     """
+    '''
     joints = put_joints_together (all_trains)
     
     normalized_joint = {}
@@ -40,6 +48,7 @@ def main ():
     
     centroids = get_point_centroids (normalized_joint, N)
     train_binned = get_point_clusters(normalized_joint, centroids)
+    '''
     """
     print (centroids[joint_header])
     store_centroids(centroids[joint_header], root_path, gesture_name)
@@ -67,10 +76,14 @@ def main ():
     # Set priors
     pP = prior_transition_matrix(M, LR)
     
-     # Train the model:
+    # Train the model:
     b = [x for x in range(N)]
     cyc = 60
+    '''
     training_data_binned = train_binned[joint_header]
+    '''
+    training_data_binned = train_binned_dirs
+    
     E, P, Pi, LL = dhmm_numeric(training_data_binned, pP, b, M, cyc, .00001)
     
     sumLik = 0
@@ -83,7 +96,7 @@ def main ():
         sumLik = sumLik + lik
     
     gestureRecThreshold = 2.0 * sumLik / len(training_data_binned)
-    """
+    
     print('\n********************************************************************')
     print('Testing %d sequences for a log likelihood greater than %.4f' % (1, gestureRecThreshold))
     print('********************************************************************\n')
@@ -96,12 +109,85 @@ def main ():
         else:
             print("Log Likelihood: %.3f < %.3f (threshold) -- NO %s Gesture" % (score, gestureRecThreshold, "circle"))
     
-        print('Recognition success rate: %.2f percent\n' % (100 * recs / len(training_data_binned)))
+    print('Recognition success rate: %.2f percent\n' % (100 * recs / len(training_data_binned)))
 
-    """
+    
+    """ Uncomment the following line to store the model"""
+    store_model(E, P, Pi, gestureRecThreshold, root_path, gesture_name)
     #dtf = dataflow(root_path, gesture_name)
     #dtf.store_model(E, P, Pi, centroids[joint_header], gestureRecThreshold)
+
+def store_model(E, P, Pi, thr, path, name):
+    Ef = open(path + os.sep + "model" + os.sep + name + ".csv", "w")
+    Ewriter = csv.writer(Ef, delimiter = ',', quotechar = '', quoting = csv.QUOTE_NONE, dialect = csv.unix_dialect)
+    Ewriter.writerow(E.shape)
+    Ewriter.writerows(E)
+    Ewriter.writerows(P)
+    Ewriter.writerow(Pi)
+    Ewriter.writerow([thr])
+    print("Saved successfully.")
+    Ef.close()
     
+def get_directed_points(points, header):
+    all_directed = []
+    for point_set in points:
+        p = point_set[header]
+        d = numpy.empty(shape = (len(p) - 1, 3))
+        for i in range(len(p) - 1):
+            d[i,:] = (p[i + 1,:] - p[i,:])
+        all_directed.append(d)
+    return all_directed
+    
+    
+def get_point_clusters_with_directions (points, dirs):
+    all_clustered = []
+    for point_set in points:
+        length = len(point_set)
+        xClustered = numpy.empty(length)
+        for i in range(length):
+            xClustered[i] = assign_point_to_cluster(point_set[i,:], dirs)
+        all_clustered.append(xClustered)
+    return all_clustered
+
+def assign_point_to_cluster(vec, dirs):
+    if vec[0] < 0:
+        if vec[1] < 0:
+            return get_cluster_direction_dot(vec, dirs[24:]) + 24
+        else:
+            return get_cluster_direction_dot(vec, dirs[18:24]) + 18
+    else:
+        return get_cluster_direction_dot(vec, dirs[:24])
+    
+def get_cluster_direction_dot(vec, p):
+    vec = normalize_vector(vec)
+    if numpy.linalg.norm(vec) == 0:
+        return 13
+    
+    max_dist = -2
+    max_dist_index = -1
+    for i in range(len(p)):
+        d = numpy.dot(vec, p[i])
+        if d > max_dist:
+            max_dist = d
+            max_dist_index = i
+    return max_dist_index
+    
+     
+def get_directed_vectors():
+    p = []
+    for i in range(1,-2,-1):
+        for j in range(1,-2,-1):
+            for k in range(1,-2,-1):
+                p.append(normalize_vector(numpy.array([i, j, k])))
+    return p
+
+def normalize_vector(vec):
+    nrm = numpy.linalg.norm(vec)
+    if nrm == 0:
+        return vec
+    else:
+        return vec / nrm
+        
 def store_centroids (centroids, path, name):
     Ef = open(path + os.sep + "centroids" + os.sep + name + ".csv", "w")
     Ewriter = csv.writer(Ef, delimiter = ',', quotechar = '', quoting = csv.QUOTE_NONE, dialect = csv.unix_dialect)
@@ -263,7 +349,6 @@ def get_xyz_data_no_header(path):
     return d
 
 def get_point_clusters(all_data, all_centroids):
-    
     all_clustered = {}
     headers = list(all_data.keys())
     for header in headers:
@@ -463,7 +548,6 @@ def dhmm_numeric(data, pP, bins, K=12, cyc=100, tol=0.0001):
     # number of sequences
     N = len(data)
     
-    
     # calculating the length of each sequence
     T = numpy.empty(shape=(1, N))
     
@@ -519,7 +603,6 @@ def dhmm_numeric(data, pP, bins, K=12, cyc=100, tol=0.0001):
             
             # Inital values of B = Prob(output|s_i), given data data
             Xcurrent = data[n]
-
             for i in range(int(T[0, n])):
                 crit = (Xcurrent[i] == bins)
                 m = numpy.where(crit)[0][0]

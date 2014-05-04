@@ -4,35 +4,55 @@ import csv
 import numpy
 import math
 from dataflow import dataflow
-from interpreterInfo import join
+from numpy.numarray.numerictypes import Int32
 
 centroids_path = "all-centroids.csv"
 root_path = "data" + os.sep + "unitytrain"
-gesture_name = "wave-R"
-orient = "R"
+gesture_name = "circle-l-cw"
+orient = "L"
 joint_header = "Hand_" + orient
+HL = "Hand_L"
+HR = "Hand_R"
 parent_joint_header = "Shoulder_" + orient
 D = 3  # the number of dimensions to use: X, Y, Z
 M = 12  # output symbols
 N = 6  # states
 LR = 2  # degree of play in the left-to-right HMM transition matrix 
-
+all_gesture_names = [["circle-l-ccw", HL], ["circle-l-cw", HL], ["circle-r-ccw", HR], ["circle-r-cw", HR], \
+                     ["crawl-l", HL], ["crawl-r", HR], ["fly", HL], ["fly", HR], ["frog", HL], ["frog", HR], \
+                     ["wave-l", HL], ["wave-r", HR], ["dog-rdown-lup", HL], ["dog-rdown-lup", HR], \
+                     ["dog-rup-ldown", HL], ["dog-rup-ldown", HR]] 
+all_gesture_names = [["crawl-l", HL]]
+saveModel = False
 def main ():
-
+    for gesture_joint in all_gesture_names:
+        train_model(gesture_joint[0], gesture_joint[1], saveModel)
+    
+def train_model(gesture_name, joint_header, save = True):
+    print("Running for ", gesture_name, joint_header, "...")
     training_path = root_path + os.sep + gesture_name
     allFiles = get_All_Files (training_path)
 
     all_trains = [] #Array of dictionaries. Each dictionary contains coordinates of  
                     #the joints. The name of the joints are the keys of the dictionaries
+    #print(allFiles)
+#     return
     for file in allFiles:
         all_trains.append(get_xyz_data(file))
     
 
     directions = get_directed_vectors()
+
+#     print(len(directions), directions)
+#     return
     N = len(directions)
-    M = N + 6
+    M = int(N + (N / 3))
     train_directed = get_directed_points(all_trains, joint_header)
+    
     train_binned_dirs = get_point_clusters_with_directions(train_directed, directions)
+    for i in range(len(train_binned_dirs)):
+        print(i + 1, len(train_binned_dirs[i]), train_binned_dirs[i], train_directed[i])
+    return
     """
     joints:
     Dictionary: keys -> joints such as "Body", "Hand_R", etc.
@@ -104,16 +124,17 @@ def main ():
     for one_training in training_data_binned:
         score = pr_hmm(one_training, P, E, Pi)
         if score > gestureRecThreshold:
-            print("Log Likelihood: %.3f > %.3f (threshold) -- FOUND %s Gesture" % (score, gestureRecThreshold, "circle"))
+            #print("Log Likelihood: %.3f > %.3f (threshold) -- FOUND %s Gesture" % (score, gestureRecThreshold, gesture_name))
             recs = recs + 1
-        else:
-            print("Log Likelihood: %.3f < %.3f (threshold) -- NO %s Gesture" % (score, gestureRecThreshold, "circle"))
+#         else:
+#             print("Log Likelihood: %.3f < %.3f (threshold) -- NO %s Gesture" % (score, gestureRecThreshold, gesture_name))
     
     print('Recognition success rate: %.2f percent\n' % (100 * recs / len(training_data_binned)))
 
     
     """ Uncomment the following line to store the model"""
-    store_model(E, P, Pi, gestureRecThreshold, root_path, gesture_name)
+    if save:
+        store_model(E, P, Pi, gestureRecThreshold, root_path, gesture_name + joint_header)
     #dtf = dataflow(root_path, gesture_name)
     #dtf.store_model(E, P, Pi, centroids[joint_header], gestureRecThreshold)
 
@@ -132,9 +153,13 @@ def get_directed_points(points, header):
     all_directed = []
     for point_set in points:
         p = point_set[header]
-        d = numpy.empty(shape = (len(p) - 1, 3))
+        vecs = []
         for i in range(len(p) - 1):
-            d[i,:] = (p[i + 1,:] - p[i,:])
+            vec = (p[i + 1,:] - p[i,:])
+            if (vec.dot(vec) != 0):
+                vecs.append(vec)
+        
+        d = numpy.asarray(list(vecs), dtype = 'float')
         all_directed.append(d)
     return all_directed
     
@@ -143,9 +168,11 @@ def get_point_clusters_with_directions (points, dirs):
     all_clustered = []
     for point_set in points:
         length = len(point_set)
-        xClustered = numpy.empty(length)
+        clusters = []
         for i in range(length):
-            xClustered[i] = assign_point_to_cluster(point_set[i,:], dirs)
+            if numpy.sqrt(point_set[i,:].dot(point_set[i,:])) != 0:
+                clusters.append(assign_point_to_cluster(point_set[i,:], dirs))
+        xClustered = numpy.asarray(list(clusters), dtype = 'float')
         all_clustered.append(xClustered)
     return all_clustered
 
@@ -160,9 +187,9 @@ def assign_point_to_cluster(vec, dirs):
     
 def get_cluster_direction_dot(vec, p):
     vec = normalize_vector(vec)
-    if numpy.linalg.norm(vec) == 0:
-        return 13
-    
+#     if numpy.linalg.norm(vec) == 0:
+#         return 13
+     
     max_dist = -2
     max_dist_index = -1
     for i in range(len(p)):
@@ -178,7 +205,8 @@ def get_directed_vectors():
     for i in range(1,-2,-1):
         for j in range(1,-2,-1):
             for k in range(1,-2,-1):
-                p.append(normalize_vector(numpy.array([i, j, k])))
+                if i != 0 or j != 0 or k != 0:
+                    p.append(normalize_vector(numpy.array([i, j, k])))
     return p
 
 def normalize_vector(vec):
@@ -259,7 +287,7 @@ def pr_hmm(clusters, P, E, pi):
         p = p + m[T - 1, i]
     
     if p != 0:
-        p = math.log(p)
+        p = math.log(p, 2)
     else:
         p = float('-inf')
         
@@ -506,7 +534,7 @@ def rSum(X):
                 # FIX THE SHAPE
         else:
             for n in range(N):
-                Z[0, n] = numpy.sum(X[n, :])
+                Z[n] = numpy.sum(X[n, :])
         return (Z) 
  
 def cSum (X):
@@ -586,7 +614,8 @@ def dhmm_numeric(data, pP, bins, K=12, cyc=100, tol=0.0001):
 
     LL = []
     lik = 0
-
+    
+    cycles = 0
     for cycle in range(cyc):
         # FORWARD-BACKWARD
         Gammainit = numpy.zeros(shape=(1, K))
@@ -685,7 +714,7 @@ def dhmm_numeric(data, pP, bins, K=12, cyc=100, tol=0.0001):
         lik = numpy.sum(Scale)
         LL.append(lik)
         
-        print("Cycle %d log likelihood = %.3f " % (cycle + 1, lik))
+        #print("Cycle %d log likelihood = %.3f " % (cycle + 1, lik))
         if cycle < 2:
             likbase = lik
         elif lik < (oldlik - 1e-6):
@@ -693,7 +722,9 @@ def dhmm_numeric(data, pP, bins, K=12, cyc=100, tol=0.0001):
         elif ((lik - likbase) < ((1 + tol) * (oldlik - likbase))) or math.isinf(lik):
             print("END...")
             break
+        cycles = cycle + 1
         
+    print("Iterated for %d cycles" %(cycles))    
     return (E, P, Pi, LL)
 
 

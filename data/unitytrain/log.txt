@@ -1,0 +1,227 @@
+Running for  circle-l-ccw Hand_L ...
+********************************************************************
+Training 12 sequences of maximum length 37 from an alphabet of size 26
+HMM with 32 hidden states
+********************************************************************
+Iterated for 60 cycles
+
+********************************************************************
+Testing 1 sequences for a log likelihood greater than -83.9736
+********************************************************************
+
+Recognition success rate: 100.00 percent
+
+Saved successfully.
+Running for  circle-l-cw Hand_L ...
+********************************************************************
+Training 12 sequences of maximum length 47 from an alphabet of size 26
+HMM with 32 hidden states
+********************************************************************
+Iterated for 60 cycles
+
+********************************************************************
+Testing 1 sequences for a log likelihood greater than -105.9004
+********************************************************************
+
+Recognition success rate: 100.00 percent
+
+Saved successfully.
+Running for  circle-r-ccw Hand_R ...
+********************************************************************
+Training 12 sequences of maximum length 39 from an alphabet of size 26
+HMM with 32 hidden states
+********************************************************************
+Iterated for 60 cycles
+
+********************************************************************
+Testing 1 sequences for a log likelihood greater than -97.1196
+********************************************************************
+
+Recognition success rate: 100.00 percent
+
+Saved successfully.
+Running for  circle-r-cw Hand_R ...
+********************************************************************
+Training 12 sequences of maximum length 39 from an alphabet of size 26
+HMM with 32 hidden states
+********************************************************************
+Iterated for 60 cycles
+
+********************************************************************
+Testing 1 sequences for a log likelihood greater than -82.7841
+********************************************************************
+
+Recognition success rate: 100.00 percent
+
+Saved successfully.
+Running for  crawl-l Hand_L ...
+********************************************************************
+Training 16 sequences of maximum length 29 from an alphabet of size 26
+HMM with 32 hidden states
+********************************************************************
+END...
+Iterated for 53 cycles
+
+********************************************************************
+Testing 1 sequences for a log likelihood greater than -48.2932
+********************************************************************
+
+Recognition success rate: 100.00 percent
+
+Saved successfully.
+Running for  crawl-r Hand_R ...
+********************************************************************
+Training 16 sequences of maximum length 25 from an alphabet of size 26
+HMM with 32 hidden states
+********************************************************************
+Iterated for 60 cycles
+
+********************************************************************
+Testing 1 sequences for a log likelihood greater than -26.3710
+********************************************************************
+
+Recognition success rate: 100.00 percent
+
+Saved successfully.
+Running for  fly Hand_L ...
+********************************************************************
+Training 12 sequences of maximum length 31 from an alphabet of size 26
+HMM with 32 hidden states
+********************************************************************
+Iterated for 60 cycles
+
+********************************************************************
+Testing 1 sequences for a log likelihood greater than -49.1405
+********************************************************************
+
+Recognition success rate: 100.00 percent
+
+Saved successfully.
+Running for  fly Hand_R ...
+********************************************************************
+Training 12 sequences of maximum length 31 from an alphabet of size 26
+HMM with 32 hidden states
+********************************************************************
+Iterated for 60 cycles
+
+********************************************************************
+Testing 1 sequences for a log likelihood greater than -39.5059
+********************************************************************
+
+Recognition success rate: 100.00 percent
+
+Saved successfully.
+Running for  frog Hand_L ...
+********************************************************************
+Training 15 sequences of maximum length 22 from an alphabet of size 26
+HMM with 32 hidden states
+********************************************************************
+Iterated for 60 cycles
+
+********************************************************************
+Testing 1 sequences for a log likelihood greater than -33.3450
+********************************************************************
+
+Recognition success rate: 93.33 percent
+
+Saved successfully.
+Running for  frog Hand_R ...
+********************************************************************
+Training 15 sequences of maximum length 22 from an alphabet of size 26
+HMM with 32 hidden states
+********************************************************************
+Iterated for 60 cycles
+
+********************************************************************
+Testing 1 sequences for a log likelihood greater than -31.8748
+********************************************************************
+
+Recognition success rate: 93.33 percent
+
+Saved successfully.
+Running for  wave-l Hand_L ...
+********************************************************************
+Training 12 sequences of maximum length 43 from an alphabet of size 26
+HMM with 32 hidden states
+********************************************************************
+END...
+Iterated for 41 cycles
+
+********************************************************************
+Testing 1 sequences for a log likelihood greater than -54.7845
+********************************************************************
+
+Recognition success rate: 91.67 percent
+
+Saved successfully.
+Running for  wave-r Hand_R ...
+********************************************************************
+Training 12 sequences of maximum length 28 from an alphabet of size 26
+HMM with 32 hidden states
+********************************************************************
+END...
+Iterated for 55 cycles
+
+********************************************************************
+Testing 1 sequences for a log likelihood greater than -33.5086
+********************************************************************
+
+Recognition success rate: 100.00 percent
+
+Saved successfully.
+Running for  dog-rdown-lup Hand_L ...
+********************************************************************
+Training 16 sequences of maximum length 17 from an alphabet of size 26
+HMM with 32 hidden states
+********************************************************************
+Iterated for 60 cycles
+
+********************************************************************
+Testing 1 sequences for a log likelihood greater than -59.9292
+********************************************************************
+
+Recognition success rate: 100.00 percent
+
+Saved successfully.
+Running for  dog-rdown-lup Hand_R ...
+********************************************************************
+Training 16 sequences of maximum length 17 from an alphabet of size 26
+HMM with 32 hidden states
+********************************************************************
+Iterated for 60 cycles
+
+********************************************************************
+Testing 1 sequences for a log likelihood greater than -60.9227
+********************************************************************
+
+Recognition success rate: 100.00 percent
+
+Saved successfully.
+Running for  dog-rup-ldown Hand_L ...
+********************************************************************
+Training 12 sequences of maximum length 20 from an alphabet of size 26
+HMM with 32 hidden states
+********************************************************************
+Iterated for 60 cycles
+
+********************************************************************
+Testing 1 sequences for a log likelihood greater than -48.0700
+********************************************************************
+
+Recognition success rate: 91.67 percent
+
+Saved successfully.
+Running for  dog-rup-ldown Hand_R ...
+********************************************************************
+Training 12 sequences of maximum length 20 from an alphabet of size 26
+HMM with 32 hidden states
+********************************************************************
+Iterated for 60 cycles
+
+********************************************************************
+Testing 1 sequences for a log likelihood greater than -70.2961
+********************************************************************
+
+Recognition success rate: 100.00 percent
+
+Saved successfully.

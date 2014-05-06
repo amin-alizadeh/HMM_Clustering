@@ -8,7 +8,7 @@ from numpy.numarray.numerictypes import Int32
 
 centroids_path = "all-centroids.csv"
 root_path = "data" + os.sep + "unitytrain"
-gesture_name = "circle-l-cw"
+gesture_name = "crawl-l"
 orient = "L"
 joint_header = "Hand_" + orient
 HL = "Hand_L"
@@ -16,7 +16,7 @@ HR = "Hand_R"
 parent_joint_header = "Shoulder_" + orient
 D = 3  # the number of dimensions to use: X, Y, Z
 M = 12  # output symbols
-N = 6  # states
+N = 5  # states
 LR = 2  # degree of play in the left-to-right HMM transition matrix 
 all_gesture_names = [["circle-l-ccw", HL], ["circle-l-cw", HL], ["circle-r-ccw", HR], ["circle-r-cw", HR], \
                      ["crawl-l", HL], ["crawl-r", HR], ["fly", HL], ["fly", HR], ["frog", HL], ["frog", HR], \
@@ -25,6 +25,42 @@ all_gesture_names = [["circle-l-ccw", HL], ["circle-l-cw", HL], ["circle-r-ccw",
 all_gesture_names = [["dog-rup-ldown", HL]]
 saveModel = False
 def main ():
+    training_path = root_path + os.sep + gesture_name
+    allFiles = get_All_Files (training_path)
+
+    all_trains = [] #Array of dictionaries. Each dictionary contains coordinates of  
+                    #the joints. The name of the joints are the keys of the dictionaries
+    #print(allFiles)
+#     return
+    for file in allFiles:
+        all_trains.append(get_xyz_data(file))
+    
+    training_path = root_path + os.sep + gesture_name
+    allFiles = get_All_Files (training_path)
+
+    all_trains = [] #Array of dictionaries. Each dictionary contains coordinates of  
+                    #the joints. The name of the joints are the keys of the dictionaries
+    #print(allFiles)
+#     return
+    for file in allFiles:
+        all_trains.append(get_xyz_data(file))
+    
+
+    
+    joints = put_joints_together (all_trains)
+    
+    normalized_joint = {}
+    
+    normalized_joint[joint_header] =  normalize_joint_with_parent (joints, joint_header, parent_joint_header)
+    
+    centroids = get_point_centroids (normalized_joint, N)
+    print(centroids)
+    Ef = open(root_path + os.sep + gesture_name + os.sep + "centroids.csv", "w")
+    Ewriter = csv.writer(Ef, delimiter = ',', quotechar = '', quoting = csv.QUOTE_NONE, dialect = csv.unix_dialect)
+    Ewriter.writerow([joint_header])
+    Ewriter.writerows(centroids[joint_header])
+    Ef.close()
+    return
     for gesture_joint in all_gesture_names:
         train_model(gesture_joint[0], gesture_joint[1], saveModel)
     

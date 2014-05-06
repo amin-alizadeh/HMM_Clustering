@@ -166,7 +166,22 @@ class classifier(object):
         return (P)
 
     def dhmm_numeric(self, X, pP, bins, K=2, cyc=100, tol=0.0001):
+        """ simple Hidden Markov Model - variable lengths and discrete symbols
         
+         X - N x p array of Xs, p sequences
+         bins - possible bins of Xs
+         K - number of states (default 2)
+         cyc - maximum number of cycles of Baum-Welch (default 100)
+         tol - termination tolerance (prop change in likelihood) (default 0.0001)
+        
+         E - observation emission probabilities
+         P - state transition probabilities
+         Pi - initial state prior probabilities
+         LL - log likelihood curve
+        
+         Iterates until a proportional change < tol in the log likelihood 
+         or cyc steps of Baum-Welch
+        """
         D = len(X[0, 0, :])
         
 

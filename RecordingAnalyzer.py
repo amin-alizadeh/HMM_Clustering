@@ -22,7 +22,7 @@ all_gesture_names = [["circle-l-ccw", HL], ["circle-l-cw", HL], ["circle-r-ccw",
                      ["crawl-l", HL], ["crawl-r", HR], ["fly", HL], ["fly", HR], ["frog", HL], ["frog", HR], \
                      ["wave-l", HL], ["wave-r", HR], ["dog-rdown-lup", HL], ["dog-rdown-lup", HR], \
                      ["dog-rup-ldown", HL], ["dog-rup-ldown", HR]] 
-all_gesture_names = [["crawl-l", HL]]
+all_gesture_names = [["dog-rup-ldown", HL]]
 saveModel = False
 def main ():
     for gesture_joint in all_gesture_names:
@@ -40,7 +40,6 @@ def train_model(gesture_name, joint_header, save = True):
     for file in allFiles:
         all_trains.append(get_xyz_data(file))
     
-
     directions = get_directed_vectors()
 
 #     print(len(directions), directions)
@@ -50,9 +49,11 @@ def train_model(gesture_name, joint_header, save = True):
     train_directed = get_directed_points(all_trains, joint_header)
     
     train_binned_dirs = get_point_clusters_with_directions(train_directed, directions)
-    for i in range(len(train_binned_dirs)):
-        print(i + 1, len(train_binned_dirs[i]), train_binned_dirs[i], train_directed[i])
-    return
+    print(len(allFiles), len(train_directed), len(train_binned_dirs))
+    #return
+#     for i in range(len(train_binned_dirs)):
+#         print(i + 1, len(train_binned_dirs[i]), train_binned_dirs[i], train_directed[i])
+#     return
     """
     joints:
     Dictionary: keys -> joints such as "Body", "Hand_R", etc.
@@ -151,16 +152,25 @@ def store_model(E, P, Pi, thr, path, name):
     
 def get_directed_points(points, header):
     all_directed = []
+    it = 0
     for point_set in points:
+        it = it + 1
         p = point_set[header]
         vecs = []
+        last_p = p[0, :]
+        #print("iteration", it)
         for i in range(len(p) - 1):
-            vec = (p[i + 1,:] - p[i,:])
-            if (vec.dot(vec) != 0):
+            current_p = p[i + 1,:] 
+            vec = (current_p - last_p)
+            mag_p = numpy.linalg.norm(vec)
+            #print(mag_p)
+            if (mag_p > 0.05):
                 vecs.append(vec)
-        
-        d = numpy.asarray(list(vecs), dtype = 'float')
-        all_directed.append(d)
+                last_p = current_p
+        print(len(vecs))
+        if (len(vecs) > 0):
+            d = numpy.asarray(list(vecs), dtype = 'float')
+            all_directed.append(d)
     return all_directed
     
     
@@ -170,7 +180,7 @@ def get_point_clusters_with_directions (points, dirs):
         length = len(point_set)
         clusters = []
         for i in range(length):
-            if numpy.sqrt(point_set[i,:].dot(point_set[i,:])) != 0:
+            if numpy.sqrt(point_set[i,:].dot(point_set[i,:])) > 0.07:
                 clusters.append(assign_point_to_cluster(point_set[i,:], dirs))
         xClustered = numpy.asarray(list(clusters), dtype = 'float')
         all_clustered.append(xClustered)

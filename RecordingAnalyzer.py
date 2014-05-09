@@ -16,17 +16,17 @@ HR = "Hand_R"
 parent_joint_header = "Shoulder_" + orient
 D = 3  # the number of dimensions to use: X, Y, Z
 M = 12  # output symbols
-<<<<<<< HEAD
 N = 6  # states
-LR = 3  # degree of play in the left-to-right HMM transition matrix 
-#all_gesture_names = [["circle-l-ccw", HL], ["circle-l-cw", HL], ["circle-r-ccw", HR], ["circle-r-cw", HR], \
-all_gesture_names =                      [["crawl-l", HL], ["crawl-r", HR], ["fly", HL], ["fly", HR], ["frog", HL], ["frog", HR], \
-                     ["wave-l", HL], ["wave-r", HR]]#, \
-                     #["dog-rdown-lup", HL], ["dog-rdown-lup", HR], \
-                     #["dog-rup-ldown", HL], ["dog-rup-ldown", HR]] 
+LR = 4  # degree of play in the left-to-right HMM transition matrix 
+all_gesture_names = [["circle-l-ccw", HL], ["circle-l-cw", HL], ["circle-r-ccw", HR], ["circle-r-cw", HR], \
+                    ["crawl-l", HL], ["crawl-r", HR], ["fly", HL], ["fly", HR], ["frog", HL], ["frog", HR], \
+                    ["wave-l", HL], ["wave-r", HR], \
+                    ["dog-rdown-lup", HL], ["dog-rdown-lup", HR], \
+                    ["dog-rup-ldown", HL], ["dog-rup-ldown", HR]] 
 #all_gesture_names = [["dog-rup-ldown", HL]]
-all_gesture_names = [["circle-r-ccw", HR], ["circle-r-cw", HR]]
-all_gesture_names =[["fly", HL], ["fly", HR]]
+#all_gesture_names = [["circle-r-ccw", HR], ["circle-r-cw", HR]]
+#all_gesture_names =[["fly", HL], ["fly", HR]]
+all_gesture_names = [["dogpaddle", HL], ["dogpaddle", HR]]
 saveModel = True
 def main ():
 #     s = state_transition_probailities(10, 3)
@@ -36,53 +36,6 @@ def main ():
 #             l = l + "%.3f, "%s[i, j]
 #         print(l)
 #     return
-=======
-N = 5  # states
-LR = 2  # degree of play in the left-to-right HMM transition matrix 
-all_gesture_names = [["circle-l-ccw", HL], ["circle-l-cw", HL], ["circle-r-ccw", HR], ["circle-r-cw", HR], \
-                     ["crawl-l", HL], ["crawl-r", HR], ["fly", HL], ["fly", HR], ["frog", HL], ["frog", HR], \
-                     ["wave-l", HL], ["wave-r", HR], ["dog-rdown-lup", HL], ["dog-rdown-lup", HR], \
-                     ["dog-rup-ldown", HL], ["dog-rup-ldown", HR]] 
-all_gesture_names = [["dog-rup-ldown", HL]]
-saveModel = False
-def main ():
-    training_path = root_path + os.sep + gesture_name
-    allFiles = get_All_Files (training_path)
-
-    all_trains = [] #Array of dictionaries. Each dictionary contains coordinates of  
-                    #the joints. The name of the joints are the keys of the dictionaries
-    #print(allFiles)
-#     return
-    for file in allFiles:
-        all_trains.append(get_xyz_data(file))
-    
-    training_path = root_path + os.sep + gesture_name
-    allFiles = get_All_Files (training_path)
-
-    all_trains = [] #Array of dictionaries. Each dictionary contains coordinates of  
-                    #the joints. The name of the joints are the keys of the dictionaries
-    #print(allFiles)
-#     return
-    for file in allFiles:
-        all_trains.append(get_xyz_data(file))
-    
-
-    
-    joints = put_joints_together (all_trains)
-    
-    normalized_joint = {}
-    
-    normalized_joint[joint_header] =  normalize_joint_with_parent (joints, joint_header, parent_joint_header)
-    
-    centroids = get_point_centroids (normalized_joint, N)
-    print(centroids)
-    Ef = open(root_path + os.sep + gesture_name + os.sep + "centroids.csv", "w")
-    Ewriter = csv.writer(Ef, delimiter = ',', quotechar = '', quoting = csv.QUOTE_NONE, dialect = csv.unix_dialect)
-    Ewriter.writerow([joint_header])
-    Ewriter.writerows(centroids[joint_header])
-    Ef.close()
-    return
->>>>>>> 13bcb921b1033df3fb1f9884e9fa92c13281ce8c
     for gesture_joint in all_gesture_names:
         train_model(gesture_joint[0], gesture_joint[1], saveModel)
     
@@ -109,9 +62,10 @@ def train_model(gesture_name, joint_header, save = True):
     train_binned_dirs = get_point_clusters_with_directions(train_directed, directions)
 #     print(len(allFiles), len(train_directed), len(train_binned_dirs))
 #     return
-    for i in range(len(train_binned_dirs)):
-        print(i + 1, len(train_binned_dirs[i]), train_binned_dirs[i], train_directed[i])
-    return
+
+#     for i in range(len(train_binned_dirs)):
+#         print(i + 1, len(train_binned_dirs[i]), train_binned_dirs[i], train_directed[i])
+#     return
     """
     joints:
     Dictionary: keys -> joints such as "Body", "Hand_R", etc.

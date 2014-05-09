@@ -17,14 +17,24 @@ parent_joint_header = "Shoulder_" + orient
 D = 3  # the number of dimensions to use: X, Y, Z
 M = 12  # output symbols
 N = 6  # states
-LR = 2  # degree of play in the left-to-right HMM transition matrix 
-all_gesture_names = [["circle-l-ccw", HL], ["circle-l-cw", HL], ["circle-r-ccw", HR], ["circle-r-cw", HR], \
-                     ["crawl-l", HL], ["crawl-r", HR], ["fly", HL], ["fly", HR], ["frog", HL], ["frog", HR], \
-                     ["wave-l", HL], ["wave-r", HR], ["dog-rdown-lup", HL], ["dog-rdown-lup", HR], \
-                     ["dog-rup-ldown", HL], ["dog-rup-ldown", HR]] 
-all_gesture_names = [["dog-rup-ldown", HL]]
-saveModel = False
+LR = 3  # degree of play in the left-to-right HMM transition matrix 
+#all_gesture_names = [["circle-l-ccw", HL], ["circle-l-cw", HL], ["circle-r-ccw", HR], ["circle-r-cw", HR], \
+all_gesture_names =                      [["crawl-l", HL], ["crawl-r", HR], ["fly", HL], ["fly", HR], ["frog", HL], ["frog", HR], \
+                     ["wave-l", HL], ["wave-r", HR]]#, \
+                     #["dog-rdown-lup", HL], ["dog-rdown-lup", HR], \
+                     #["dog-rup-ldown", HL], ["dog-rup-ldown", HR]] 
+#all_gesture_names = [["dog-rup-ldown", HL]]
+all_gesture_names = [["circle-r-ccw", HR], ["circle-r-cw", HR]]
+all_gesture_names =[["fly", HL], ["fly", HR]]
+saveModel = True
 def main ():
+#     s = state_transition_probailities(10, 3)
+#     for i in range(s.shape[0]):
+#         l = ""
+#         for j in range(s.shape[1]):
+#             l = l + "%.3f, "%s[i, j]
+#         print(l)
+#     return
     for gesture_joint in all_gesture_names:
         train_model(gesture_joint[0], gesture_joint[1], saveModel)
     
@@ -45,15 +55,15 @@ def train_model(gesture_name, joint_header, save = True):
 #     print(len(directions), directions)
 #     return
     N = len(directions)
-    M = int(N + (N / 3))
+    M = int(N + (2 * N / 5))
     train_directed = get_directed_points(all_trains, joint_header)
     
     train_binned_dirs = get_point_clusters_with_directions(train_directed, directions)
-    print(len(allFiles), len(train_directed), len(train_binned_dirs))
-    #return
-#     for i in range(len(train_binned_dirs)):
-#         print(i + 1, len(train_binned_dirs[i]), train_binned_dirs[i], train_directed[i])
+#     print(len(allFiles), len(train_directed), len(train_binned_dirs))
 #     return
+    for i in range(len(train_binned_dirs)):
+        print(i + 1, len(train_binned_dirs[i]), train_binned_dirs[i], train_directed[i])
+    return
     """
     joints:
     Dictionary: keys -> joints such as "Body", "Hand_R", etc.
@@ -119,7 +129,7 @@ def train_model(gesture_name, joint_header, save = True):
     gestureRecThreshold = 2.0 * sumLik / len(training_data_binned)
     
     print('\n********************************************************************')
-    print('Testing %d sequences for a log likelihood greater than %.4f' % (1, gestureRecThreshold))
+    print('Testing %d sequences for a log likelihood greater than %.4f' % (len(training_data_binned), gestureRecThreshold))
     print('********************************************************************\n')
     recs = 0
     for one_training in training_data_binned:
@@ -164,11 +174,11 @@ def get_directed_points(points, header):
             vec = (current_p - last_p)
             mag_p = numpy.linalg.norm(vec)
             #print(mag_p)
-            if (mag_p > 0.05):
+            if (mag_p > 0.04):
                 vecs.append(vec)
                 last_p = current_p
-        print(len(vecs))
-        if (len(vecs) > 0):
+#         print(len(vecs))
+        if (len(vecs) > 3):
             d = numpy.asarray(list(vecs), dtype = 'float')
             all_directed.append(d)
     return all_directed
@@ -180,7 +190,7 @@ def get_point_clusters_with_directions (points, dirs):
         length = len(point_set)
         clusters = []
         for i in range(length):
-            if numpy.sqrt(point_set[i,:].dot(point_set[i,:])) > 0.07:
+            if numpy.sqrt(point_set[i,:].dot(point_set[i,:])) > 0.01:
                 clusters.append(assign_point_to_cluster(point_set[i,:], dirs))
         xClustered = numpy.asarray(list(clusters), dtype = 'float')
         all_clustered.append(xClustered)
@@ -738,6 +748,13 @@ def dhmm_numeric(data, pP, bins, K=12, cyc=100, tol=0.0001):
     return (E, P, Pi, LL)
 
 
-  
+def state_transition_probailities(M, LR):
+    p = numpy.zeros(shape=(M, M))
+    for i in range(M):
+        for j in range(M):
+            if (j - i) < LR and (j - i) >= 0:
+                p[i, j] = 1 / LR
+    return p
+
 if __name__ == '__main__':
     main ()

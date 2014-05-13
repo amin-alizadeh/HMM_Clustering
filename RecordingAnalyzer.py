@@ -21,12 +21,13 @@ LR = 7  # degree of play in the left-to-right HMM transition matrix
 all_gesture_names = [["circle-l-ccw", HL], ["circle-l-cw", HL], ["circle-r-ccw", HR], ["circle-r-cw", HR], \
                     ["crawl-l", HL], ["crawl-r", HR], ["fly", HL], ["fly", HR], ["frog", HL], ["frog", HR], \
                     ["wave-l", HL], ["wave-r", HR], \
-                    ["dog-rdown-lup", HL], ["dog-rdown-lup", HR], \
-                    ["dog-rup-ldown", HL], ["dog-rup-ldown", HR]] 
+                    ["dogpaddle", HL], ["dogpaddle", HR]]
+#                     ["dog-rdown-lup", HL], ["dog-rdown-lup", HR]] , \
+#                     ["dog-rup-ldown", HL], ["dog-rup-ldown", HR]] 
 #all_gesture_names = [["dog-rup-ldown", HL]]
 #all_gesture_names = [["circle-r-ccw", HR], ["circle-r-cw", HR]]
 #all_gesture_names =[["fly", HL], ["fly", HR]]
-all_gesture_names = [["dogpaddle", HL], ["dogpaddle", HR]]
+# all_gesture_names = [["dogpaddle", HL], ["dogpaddle", HR]]
 saveModel = True
 def main ():
 #     s = state_transition_probailities(10, 3)

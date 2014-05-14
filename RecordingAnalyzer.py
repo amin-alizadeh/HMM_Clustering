@@ -5,11 +5,12 @@ import numpy
 import math
 from dataflow import dataflow
 from numpy.numarray.numerictypes import Int32
+from logging import root
 
 centroids_path = "all-centroids.csv"
 root_path = "data" + os.sep + "unitytrain"
-gesture_name = "crawl-l"
-orient = "L"
+gesture_name = "frog"
+orient = "R"
 joint_header = "Hand_" + orient
 HL = "Hand_L"
 HR = "Hand_R"
@@ -37,8 +38,41 @@ def main ():
 #             l = l + "%.3f, "%s[i, j]
 #         print(l)
 #     return
+    save_header = "Hand_L"
+    training_path = root_path + os.sep + gesture_name
+    allFiles = get_All_Files (training_path)
+    all_trains = []
+    for file in allFiles:
+        d = get_xyz_data(file)
+        fl = file.split('\\')
+        fn = fl[len(fl) - 1]
+        Ef = open(root_path + os.sep + "data-fixed" + os.sep + fn , "w")
+        Ewriter = csv.writer(Ef, delimiter = ',', quotechar = '', quoting = csv.QUOTE_NONE, dialect = csv.unix_dialect)
+        Ewriter.writerow(["Hand_L","",""])
+        Ewriter.writerows(d["Hand_L"])
+        Ef.close()
+    return
+    for i in range(len(all_trains)):
+        fl = allFiles[i].split('\\')
+        fn = fl[len(fl) - 1]
+#         for j in range(len(all_trains[i][joint_header]) - 1, -1, -1):
+#             print(all_trains[i][joint_header][j,:])
+        store_reversed(all_trains[i], joint_header, save_header, fn)
+    return
     for gesture_joint in all_gesture_names:
         train_model(gesture_joint[0], gesture_joint[1], saveModel)
+def store_reversed(d, h, sh, filename):
+    Ef = open(root_path + os.sep + "data-fixed" + os.sep + filename , "w")
+    Ewriter = csv.writer(Ef, delimiter = ',', quotechar = '', quoting = csv.QUOTE_NONE, dialect = csv.unix_dialect)
+    Ewriter.writerow([sh,"",""])
+    for i in range (len(d[h]) - 1, -1, -1):
+        Ewriter.writerow(d[h][i,:])
+    
+#     Ewriter.writerows(P)
+#     Ewriter.writerow(Pi)
+    
+    print("Saved successfully.")
+    Ef.close()
     
 def train_model(gesture_name, joint_header, save = True):
     print("Running for ", gesture_name, joint_header, "...")

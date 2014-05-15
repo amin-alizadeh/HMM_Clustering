@@ -9,7 +9,7 @@ from logging import root
 
 centroids_path = "all-centroids.csv"
 root_path = "data" + os.sep + "unitytrain"
-gesture_name = "frog"
+gesture_name = "fly"
 orient = "R"
 joint_header = "Hand_" + orient
 HL = "Hand_L"
@@ -20,9 +20,9 @@ M = 12  # output symbols
 N = 6  # states
 LR = 7  # degree of play in the left-to-right HMM transition matrix 
 all_gesture_names = [["circle-l-ccw", HL], ["circle-l-cw", HL], ["circle-r-ccw", HR], ["circle-r-cw", HR], \
-                    ["crawl-l", HL], ["crawl-r", HR], ["fly", HL], ["fly", HR], ["frog", HL], ["frog", HR], \
+                    ["crawl-l", HL], ["crawl-r", HR], ["fly-l", HL], ["fly-r", HR], ["frog-l", HL], ["frog-r", HR], \
                     ["wave-l", HL], ["wave-r", HR], \
-                    ["dogpaddle", HL], ["dogpaddle", HR]]
+                    ["dogpaddle-l", HL], ["dogpaddle-r", HR]]
 #                     ["dog-rdown-lup", HL], ["dog-rdown-lup", HR]] , \
 #                     ["dog-rup-ldown", HL], ["dog-rup-ldown", HR]] 
 #all_gesture_names = [["dog-rup-ldown", HL]]
@@ -38,7 +38,11 @@ def main ():
 #             l = l + "%.3f, "%s[i, j]
 #         print(l)
 #     return
-    save_header = "Hand_L"
+
+    for gesture_joint in all_gesture_names:
+        train_model(gesture_joint[0], gesture_joint[1], saveModel)
+    return
+    save_header = "Hand_R"
     training_path = root_path + os.sep + gesture_name
     allFiles = get_All_Files (training_path)
     all_trains = []
@@ -48,8 +52,8 @@ def main ():
         fn = fl[len(fl) - 1]
         Ef = open(root_path + os.sep + "data-fixed" + os.sep + fn , "w")
         Ewriter = csv.writer(Ef, delimiter = ',', quotechar = '', quoting = csv.QUOTE_NONE, dialect = csv.unix_dialect)
-        Ewriter.writerow(["Hand_L","",""])
-        Ewriter.writerows(d["Hand_L"])
+        Ewriter.writerow([save_header,"",""])
+        Ewriter.writerows(d[save_header])
         Ef.close()
     return
     for i in range(len(all_trains)):
@@ -59,8 +63,6 @@ def main ():
 #             print(all_trains[i][joint_header][j,:])
         store_reversed(all_trains[i], joint_header, save_header, fn)
     return
-    for gesture_joint in all_gesture_names:
-        train_model(gesture_joint[0], gesture_joint[1], saveModel)
 def store_reversed(d, h, sh, filename):
     Ef = open(root_path + os.sep + "data-fixed" + os.sep + filename , "w")
     Ewriter = csv.writer(Ef, delimiter = ',', quotechar = '', quoting = csv.QUOTE_NONE, dialect = csv.unix_dialect)
@@ -182,7 +184,7 @@ def train_model(gesture_name, joint_header, save = True):
     
     """ Uncomment the following line to store the model"""
     if save:
-        store_model(E, P, Pi, gestureRecThreshold, root_path, gesture_name + joint_header)
+        store_model(E, P, Pi, gestureRecThreshold, root_path, gesture_name)
     #dtf = dataflow(root_path, gesture_name)
     #dtf.store_model(E, P, Pi, centroids[joint_header], gestureRecThreshold)
 

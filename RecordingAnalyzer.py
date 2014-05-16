@@ -29,6 +29,8 @@ all_gesture_names = [["circle-l-ccw", HL], ["circle-l-cw", HL], ["circle-r-ccw",
 #all_gesture_names = [["circle-r-ccw", HR], ["circle-r-cw", HR]]
 #all_gesture_names =[["fly", HL], ["fly", HR]]
 # all_gesture_names = [["dogpaddle", HL], ["dogpaddle", HR]]
+all_gesture_names = [["dogpaddle-up-r", HR], ["dogpaddle-down-r", HR], \
+                     ["dogpaddle-up-l", HL], ["dogpaddle-down-l", HL]]
 saveModel = True
 def main ():
 #     s = state_transition_probailities(10, 3)
@@ -412,7 +414,8 @@ def put_joints_together (all_joints):
 def get_All_Files (path):
     files = []
     for file in os.listdir(path):
-        files.append(path + os.sep + file)
+        if os.path.isfile(path + os.sep + file):
+            files.append(path + os.sep + file)
     return files
 
 def get_xyz_data(path):
